@@ -1,0 +1,221 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, stackengine}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{physics}
+\usepackage{mathtools}
+\usepackage{listings} 
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{tikz-feynman}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\hypersetup{
+   colorlinks=true,
+   linkcolor=blue,
+   filecolor=magenta,      
+   urlcolor=cryan,
+}
+\urlstyle{same}
+\geometry{
+   a4paper,
+   total={180mm, 260mm},
+   left=20mm,
+   top=10mm,
+}
+\usepackage[T1]{fontenc}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+   backgroundcolor=\color{backcolour},
+   commentstyle=\color{codegreen},
+   keywordstyle=\color{magenta},
+   numberstyle=\tiny\color{codegray},
+   stringstyle=\color{codepurple},
+   basicstyle=\ttfamily\footnotesize,
+   breakatwhitespace=false,
+   breaklines=true,
+   captionpos=b,
+   keepspaces=true,
+   numbers=left,
+   numbersep=5pt,
+   showspaces=false,
+   showstringspaces=false,
+   showtabs=false,
+   tabsize=2
+}
+\lstset{style = mystyle}
+
+\title{Neutrino Physics Note}
+\author{Tony G. Liu}
+
+\begin{document}
+    \maketitle
+    \section{Quantum Kinetic Equations for Neutrino}%
+    \label{sec:Neutrino Quantum Kinetics}
+    
+    \subsection{Wigner phase-space density operator}%
+    \label{sub:Wigner phase-space density operator}
+    The momentum expansion of Dirac fermionic fields (promote to operators):
+    \[
+    \psi(x) = \sum_{s}\int \frac{d^{3}p}{(2\pi)^{3}}\hspace{0.1cm} a^{s}_{\vb{p}}u^{s}(p)e^{-ip\cdot x} + b^{s \dagger}_{\vb{p}}v^{s}(p) e^{ip \cdot x}.\] 
+    \[
+    \psi^{\dagger}(x) = \sum_{s}\int \frac{d^{3}p}{(2\pi)^{3}}\hspace{0.1cm} a^{s \dagger}_{\vb{p}}u^{s \dagger}(p)e^{ip\cdot x} + b^{s}_{\vb{p}}v^{s \dagger}(p) e^{-ip \cdot x}.\] 
+   
+    \noindent They obey the Dirac equation: $(i\gamma ^{\mu} \partial _{\mu} - m) \psi(x) = 0$\\
+
+    \noindent A Fourier transformation connects momentum and position space representation of the operators:
+    \begin{align*}
+        a^{s}_{\vb{p}} &= \int d^{3}x \hspace{0.1cm} e^{ip \cdot x}u^{s \dagger}(p) \psi(x)   \hspace{0.5cm} a^{s \dagger}_{\vb{p}} = \int d^{3}x \hspace{0.1cm} e^{-ip \cdot x} \psi^{\dagger}(x) u^{s}(p)\\
+        b^{s}_{\vb{p}} &= \int d^{3}x \hspace{0.1cm} e^{ip \cdot x} \psi ^{\dagger}(x)v^{s}(p)  \hspace{0.5cm} b^{s \dagger}_{\vb{p}} = \int d^{3}x \hspace{0.1cm} e^{-ip \cdot x} v^{s \dagger}(p) \psi(x)\\
+        \text{using the normalization: } & u^{s\dagger}(p)u^{s^{\prime}}(p) = v^{s \dagger}(p)v^{s^{\prime}}(p) = \delta_{ss^{\prime}}.
+    \end{align*}
+*Note: The normalization can be up to some factors like $2E_{\vb{p}}$ or $\frac{E_{\vb{p}}}{m}$. It all depends on which factor is more convenient for establishing the theory.\\
+
+    \noindent According to the spin-statistics theorem, at equal time the Pauli exclusion principle is implemented by anti-commutation relations of the field operators:
+    \[
+    \comm{\psi(\vb{x}, t)}{\psi(\vb{x}^{\prime}, t)} = \delta(\vb{x} - \vb{x}^{\prime}) .\] 
+    \noindent The creation and annihilation operators then automatically satisfy the relation:
+    \[
+       \acomm{a_{\vb{p}}^{s}}{a_{\vb{p}^{\prime}}^{s^{\prime} \dagger}} = \acomm{b_{\vb{p}}^{s}}{b_{\vb{p}^{\prime}}^{s^{\prime}\dagger}} = (2\pi)^{3} \delta_{s s^{\prime}}\delta^{3}(\vb{p} - \vb{p}^{\prime}) 
+ .\]
+ \textbf{Proof}:
+    \begin{align*}
+       \acomm{a_{\vb{p}}^{s}}{a_{\vb{p}^{\prime}}^{s^{\prime} \dagger}} &= \int d^{3}x d^{3}x^{\prime} \hspace{0.1cm}e^{i(p \cdot x - p^{\prime}\cdot x^{\prime})} u^{s \dagger}(p) u^{s^{\prime}}(p^{\prime})\acomm{\psi (\vb{x}, t)}{\psi ^{\dagger}(\vb{x}^{\prime}, t)} = \int d^{3}x e^{i(p-p^{\prime}) \cdot x} u^{s \dagger}(p) u^{s^{\prime}}(p^{\prime}) \\
+            &\text{Similarly for the antifermion operators.}
+    \end{align*}
+
+    \noindent Now, consider the left-handed massless neutrino field (with spin $s$ = $\frac{1}{2}$):
+\begin{align*}
+   \psi(x) &= \int \frac{d^{3}p}{(2\pi)^{3}}\Big(a_{\vb{p}}(t)u_{\vb{p}} + b^{\dagger}_{-\vb{p}}(t)v_{-\vb{p}}\Big)e^{i \vb{p} \cdot \vb{x}} \hspace{0.5cm}\\ 
+   \psi ^{\dagger}(x) &= \int \frac{d^{3}p}{(2\pi)^{3}}\Big(a_{\vb{p}}^{\dagger}(t)u_{\vb{p}}^{\dagger} + b_{-\vb{p}}(t)v^{\dagger}_{-\vb{p}}\Big)e^{-i \vb{p} \cdot \vb{x}}\\
+   u_{\vb{p}}&: \text{negative-helicity fermionic spinor}\\
+   v_{\vb{p}}&: \text{positive-helicity fermionic spinor}
+ \end{align*}
+
+
+
+
+
+
+ \section{Numerical Specification}%
+ \label{sec:Numerical Simulation}
+
+ The e.o.m. for the mixed state of neutrinos described by mean-field density matrix $\varrho(t,\vb{x}, \vb{p})$:
+ \[
+ \left(  \frac{\partial}{\partial t} + \vb{v}\cdot \frac{\partial}{\partial \vb{x}} + \vb{f} \cdot \frac{\partial}{\partial \vb{p}}\right) \varrho(t,\vb{x}, \vb{p}) = i \comm{\varrho (t, \vb{x}, \vb{p})}{\mathcal{H}(t, \vb{x}, \vb{p})} + C[\varrho].\] 
+
+ \subsection{Numerical Setup}%
+ \label{sub:Perturbation from an initial state}
+
+ Consider two-flavor system, and impose the translation symmetry on both $x$ and $y$ dimensions, the e.o.m. for neutrino and antineutrino: 
+\begin{equation*}
+   \left(   \partial _{t} + v_{z}\partial_{z}\right)\rho(t,z,v_{z}) = i \comm{\rho(t,z,v_{z})}{\mathcal{H}(t,z,v_{z})}
+\end{equation*}
+
+\begin{equation*}
+   \left(   \partial _{t} + v_{z}\partial_{z}\right)\overline{\rho}(t,z,v_{z}) = i \comm{\overline{\rho}(t,z,v_{z})}{\overline{\mathcal{H}}(t,z,v_{z})}
+\end{equation*}
+
+\begin{equation*}
+   \text{with } \rho(t,z,v_{z}) = \begin{pmatrix}
+      \rho_{ee} & \rho_{ex}\\
+      \rho^{*}_{ex} & \rho_{x x}\\
+   \end{pmatrix} \text{, }
+   \overline{\rho}(t,z,v_{z}) = \begin{pmatrix}
+      \bar\rho_{ee} & \bar\rho_{ex}\\
+      \bar\rho^{*}_{ex} & \bar\rho_{x x}\\
+   \end{pmatrix}
+\end{equation*}
+
+\noindent Ignoring the MSW effect, the Hamiltonian would be: 
+\begin{equation*}
+   \mathcal{H}(t,z;v_z)=
+\begin{pmatrix}
+ -\cos 2\theta & \sin 2\theta\\
+\sin 2\theta & \cos 2\theta \\
+\end{pmatrix}
++
+\mu \int_0^1 dv_z' (1-v_{z} v_z')
+[\rho(t,z;v_z')-\bar\rho^*(t,z;v_z')]
+\equiv \mathcal{H}_{vac} + \mathcal{H}_{\nu\nu},
+\end{equation*}
+
+\begin{equation*}
+   \overline{\mathcal{H}}(t,z;v_z)=
+\begin{pmatrix}
+   -\cos 2\theta & \sin 2\theta\\
+    \sin 2\theta & \cos 2\theta \\
+\end{pmatrix}
+-
+\mu \int_0^1 dv_z' (1-v_{z} v_z')
+[\rho^*(t,z;v_z')-\bar\rho(t,z;v_z')]
+\equiv \overline{\mathcal{H}}_{vac} + \overline{\mathcal{H}}_{\nu\nu}
+\end{equation*}
+
+\noindent The finite difference index:
+
+\begin{center}
+   \begin{tabular}{c c c c}
+      & $t$ & $z$ & $v_{z}$ \\
+      step & $\delta t$ &  $\delta z$ &  $\delta v_{z}$\\
+           & $M_{1}$ & $M_{2}$ & $N$ \\
+      index & $i_1$ & $i_2$ & $k$
+   \end{tabular}
+\end{center}
+
+\noindent Let $\rho(t,z, v_{z})$ be $\rho^{k}_{i_1, i_2}$ in the discretization and the interaction Hamiltonian\\
+\[
+\mathcal{H}^{k}_{\nu\nu, i_1, i_2}  = \frac{\mu}{N} \hspace{0.1cm}\sum_{k'=0}^{N} \Big(1 - \frac{kk'}{N^{2}}\Big) \left( \rho^{k'}_{i_1, i_2} - \bar\rho^{*k'}_{i_1, i_2}\right).\] 
+\[
+\overline{\mathcal{H}}^{k}_{\nu\nu, i_1, i_2}  = -\frac{\mu}{N} \hspace{0.1cm}\sum_{k'=0}^{N} \Big(1 - \frac{kk'}{N^{2}}\Big) \left( \rho^{*k'}_{i_1, i_2} - \bar\rho^{k'}_{i_1, i_2}\right).\] 
+
+
+
+\textbf{Algorithm: Lax-Wendroff Method}:\\
+
+\noindent Using the center space discretization
+\[
+\partial_{z} \rho \rightarrow \frac{\rho_{i_1, i_2+1} - \rho_{i_1, i_2-1}}{2 \delta z}
+.\] 
+
+\[
+   \rho(t+\delta t, z) = \rho(t,z) + \delta t \hspace{0.1cm}\frac{\partial \rho(t,z)}{\partial t} + \frac{1}{2}\delta t^{2}\hspace{0.1cm} \frac{\partial^{2}\rho(t,z)}{\partial t^{2}} + O(\delta t^{3})
+.\] \\
+
+\noindent Express the density matrix at  $i_{1}+1$-th time in terms of that at $i_{1}$\\
+\[
+    \rho^{k}_{i_1+1, i_2} = \rho^{k}_{i_1, i_2} + F_{\text{trnspt}}(\rho^{k}_{i_1}) + F_{\text{osc}}(\rho^{k}_{i_1})
+.\]
+\[
+    F_{\text{trnspt}}(\rho^{k}_{i_1}) &= -\frac{c}{2}(\rho^{k}_{i_1, i_2+1} - \rho^{k}_{i_1, i_2-1}) + \frac{c^{2}}{2}(\rho^{k}_{i_1, i_2+1} - 2\rho^{k}_{i_1, i_2} + \rho^{k}_{i_1, i_2-1}).\] 
+
+\[
+F_{\text{osc}}(\rho^{k}_{i_1}) &= F_{\text{1}}(\rho^{k}_{i_1}) + F_{2}(\rho^{k}_{i_1}).\] 
+\[
+F_{1}(\rho^{k}_{i_1}) &= i\delta t[\rho^{k}_{i_1, i_2}, \mathcal{H}^{k}_{i_1, i_2}] - \frac{ic \delta t}{2}[\rho^{k}_{i_1, i_2+1} - \rho^{k}_{i_1, i_2-1}, \mathcal{H}^{k}_{i_1, i_2}] - \frac{\delta t^{2}}{2}[[\rho^{k}_{i_1, i_2}, \mathcal{H}^{k}_{i_1, i_2}], \mathcal{H}^{k}_{i_1, i_2}] .\]   
+   \[
+    F_{2} (\rho ^{k}_{i_1})&= - \frac {1}{4}ic \delta t \hspace{0.1cm} \comm{\rho ^{k}_{i_1,i_2}}{\mathcal{A}} + \frac{1}{2} i\delta t ^{2} \hspace{0.1cm}\comm{\rho^{k}_{i_1, i_2, }}{\mathcal{B}} \rightarrow \text{interaction}.\]  
+
+
+    \[
+    \mathcal{H}^{k}_{i_1,i_2} = \mathcal{H}_{\text{vac}} + \mathcal{H}^{k}_{\nu\nu, i_1, i_2} .\] 
+\[
+\mathcal{A} = \frac{\mu}{N} \sum_{k'=0}^{N}\Big(1 - \frac{kk'}{N^{2}}\Big)\left( (\rho^{k'}_{i_1, i_2+1} - \rho^{k'}_{i_1, i_2-1}) - (\bar\rho^{*k'}_{i_1, i_2+1} - \bar\rho^{*k'}_{i_1, i_2-1}) \right) \sim \text{( $\partial _{z}\mathcal{H}$ )} .\] 
+
+\[
+\mathcal{B}  &= \frac{\mu}{N} \sum _{k'=0}^{N}\Big(  1 - \frac{kk'}{N^{2}}\Big) \left( (i \comm{\rho^{k'}_{i_1, i_2}}{\mathcal{H}^{k'}_{i_1, i_2}} - \rho^{k'}_{i_1, i_2+1} + \rho^{k'}_{i_1, i_2-1}) - (i \comm{\bar \rho^{*k'}_{i_1, i_2}}{\overline{\mathcal{H}}^{*k'}_{i_1, i_2}} - \bar\rho^{*k'}_{i_1, i_2+1} + \bar\rho^{*k'}_{i_1, i_2-1})  \right) \sim \text{ ( $\partial _{t}\mathcal{H}$ )}.\] 
+The above Courant-Friedrichs-Lewy (CFL) stability criterion:
+\[
+c \equiv \frac{\abs{v_{z}}\delta t}{\delta z}\leq 1 .\] 
+
+
+
+\end{document}
