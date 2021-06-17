@@ -101,9 +101,33 @@
  \end{align*}
 
 
+\subsection{Time Independent Hamiltonain}%
+\label{sub:Time Independent Hamiltonain}
+\begin{align*}
+   \left(  \frac{\partial}{\partial t} + \vb{v}\cdot \frac{\partial}{\partial \vb{x}} \right) \varrho(t,\vb{x}, \vb{p}) &= i \comm{\varrho (t, \vb{x}, \vb{p})}{\mathcal{H}(t, \vb{x}, \vb{p})} , \hspace{0.1cm}\varrho(t=0,\vb{x}) = f(\vb{x})\\
+   \mathcal{H} &= \begin{pmatrix}
+ -\cos 2\theta & \sin 2\theta\\
+\sin 2\theta & \cos 2\theta \\
+\end{pmatrix}\\
+      \Rightarrow \varrho(t,\vb{x}) &= e^{-i\mathcal{H}t}f(\vb{x} - \vb{v}t)e^{i\mathcal{H}t} 
+.\end{align*}
 
-
-
+Given the explicit form of initial condition, the solution is
+\begin{align*}
+   e^{i\mathcal{H}t} &= \begin{pmatrix} 
+      e^{it}\sin^{2}{\theta} + e^{-it}\cos^{2}{\theta}& i\sin{t} \sin{2\theta}\\
+      i\sin t  \sin 2\theta & e^{it} \cos^{2}\theta + e^{-it}\sin^{2}\theta\\
+   \end{pmatrix} , 
+   f(\vb{x}) = \begin{pmatrix} 
+      f_{ee}(\vb{x}) & 0\\
+      0 & f_{xx}(\vb{x})\\
+   \end{pmatrix}\\
+   \\
+      \varrho_{ee}(t,\vb{x}) &=  
+      f_{ee}(\vb{x} - \vb{v}t) \Big(\cos^{4}(\theta) + 2\cos (2t) \cos ^{2} (\theta) \sin^{2}(\theta) + \sin^{4} (\theta)\Big) + f_{x x}(\vb{x} - \vb{v}t)  \sin ^{2}t \sin ^{2 }2\theta \\ 
+      \varrho_{ex}(t, \vb{x}) &= \varrho_{xe}^{*} = 2i \Big(f_{ee}(\vb{x} - \vb{v}t) - f_{x x} (\vb{x} - \vb{v}t)\Big) \hspace{0.1cm}\sin(t) \sin(\theta) \cos(\theta) \Big(e^{it}\cos^{2}(\theta) + e^{-it}\sin ^{2}(\theta)\Big)\\
+      \varrho_{x x}(t, \vb{x}) &= f_{x x}(\vb{x} - \vb{v}t)\Big(\cos^{4}(\theta) + 2 \cos(2t) \cos^{2}(\theta) \sin^{2}(\theta)  + \sin ^{4}(\theta) \Big)  + f_{ee}(\vb{x} - \vb{v}t)\sin ^{2}(t) \sin ^{2}(2\theta)
+.\end{align*}
 
  \section{Numerical Specification}%
  \label{sec:Numerical Simulation}
