@@ -10,7 +10,8 @@ typedef struct phys_sys_t {
     double  pmo = 1;
     double  theta = 33.3;      /*	mixing angle	*/
     double  mu = 1.0;         /*	interaction strength	*/
-  
+ 
+    double  t; 
     int     init; 
     double  f_0; 
     double  alpha;
@@ -21,7 +22,7 @@ typedef struct phys_sys_t {
 typedef struct num_sys_t {
     int     dim;        /*	1 + dim. space-time dimensions	*/
     
-    double  dt; 
+    double  CFL; 
     int     Nt;
     
     double  x1, x2, y1, y2, z1, z2;
@@ -93,6 +94,7 @@ namespace Neu {
             phys_sys_t  osc; 
             num_sys_t   sys;
             double      t;
+            double      dt;
             double      v1, v2;
             size_t      SIZE;
             field2_t     rho;      
@@ -118,6 +120,8 @@ namespace Neu {
                         dvz = (v2 - v1)/sys.Nvz;
                         z   = new double[sys.Nz];
                         vz  = new double[sys.Nvz];
+                        
+                        dt = _num_sys.CFL*dz/v2;
                         for (int j = 0; j < sys.Nz; ++j) 
                            z[j] = sys.z1 + (j+0.5)*dz;
                         for (int k = 0; k < sys.Nvz; ++k) 
@@ -134,6 +138,8 @@ namespace Neu {
                         z   = new double[sys.Nz];
                         vx  = new double[sys.Nvx];
                         vz  = new double[sys.Nvz];
+
+                        dt = _num_sys.CFL*dz/v2;
                         for (int j = 0; j < sys.Nx; ++j)
                             x[j] = sys.x1 + (j+0.5)*dx;
                         for (int j = 0; j < sys.Nz; ++j)
@@ -218,7 +224,7 @@ namespace Neu {
 
             void field_to_pol(pol_t *P, const field2_t *fd);
             
-            double Gaussian(double z);
+            double Gaussian(int dim, ...);
 
             void output_rho(const char *filename, field2_t *rho);
 

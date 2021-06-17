@@ -27,7 +27,7 @@ void Neu::parsing(int argc, char *const *argv, phys_sys_t *phys_sys, num_sys_t *
         {"beta", required_argument, NULL, 6},
         {"dim", required_argument, NULL, 7},
         {"Nt", required_argument, NULL, 8},
-        {"dt", required_argument, NULL, 9},
+        {"CFL", required_argument, NULL, 9},
         {"Nx", required_argument, NULL, 10},
         {"x1", required_argument, NULL, 11},
         {"x2", required_argument, NULL, 12},
@@ -75,7 +75,7 @@ void Neu::parsing(int argc, char *const *argv, phys_sys_t *phys_sys, num_sys_t *
                 sscanf(optarg, "%d", &num_sys->Nt);
                 break;
             case 9:
-                sscanf(optarg, "%lf", &num_sys->dt);
+                sscanf(optarg, "%lf", &num_sys->CFL);
                 break;
             case 10:
                 sscanf(optarg, "%d", &num_sys->Nx);
@@ -119,7 +119,7 @@ void Neu::parsing(int argc, char *const *argv, phys_sys_t *phys_sys, num_sys_t *
             case 23:
                 sscanf(optarg, "%lf", &phys_sys->A);
                 //osc->A = 1e-7;
-                printf("this is A : %.8lf\n", phys_sys->A);
+                //printf("this is A : %.8lf\n", phys_sys->A);
                 break;
             case 24:
                 sscanf(optarg, "%lf", &phys_sys->z_0);
@@ -174,7 +174,12 @@ void Neu::parsing(int argc, char *const *argv, phys_sys_t *phys_sys, num_sys_t *
     C._22 = a*(A._21*B._12 - A._12*B._21);  \
 }
 
-
+#define KO2(y, a, x, N) { \
+    y._11 += a*(x[2*N]._11 + x[2*N]._11 - 4*(x[1*N]._11 + x[-1*N]._11) + 6*x[0]._11); \
+    y._12 += a*(x[2*N]._12 + x[2*N]._12 - 4*(x[1*N]._12 + x[-1*N]._12) + 6*x[0]._12); \
+    y._21 += a*(x[2*N]._21 + x[2*N]._21 - 4*(x[1*N]._21 + x[-1*N]._21) + 6*x[0]._21); \
+    y._22 += a*(x[2*N]._22 + x[2*N]._22 - 4*(x[1*N]._22 + x[-1*N]._22) + 6*x[0]._22); \
+}
 
 void Neu::Qke2::rk4(field2_t *curr, field2_t *next) {
     field2_t f0, f1, f2, f3;
@@ -194,27 +199,27 @@ void Neu::Qke2::rk4(field2_t *curr, field2_t *next) {
     /*	Step 1	*/    
     periodic_ghost_zone(curr);
     compute_F(&f0, curr);
-    fieldadd(&curr1, 1.0, curr, 0.5*sys.dt, &f0);
+    fieldadd(&curr1, 1.0, curr, 0.5*dt, &f0);
 
     /*	Step 2	*/
     periodic_ghost_zone(&curr1);
     compute_F(&f1, &curr1);
-    fieldadd(&curr2, 1.0, curr, 0.5*sys.dt, &f1);
+    fieldadd(&curr2, 1.0, curr, 0.5*dt, &f1);
     
     /*	Step 3	*/
     periodic_ghost_zone(&curr2);
     compute_F(&f2, &curr2);
-    fieldadd(&curr3, 1.0, curr, sys.dt, &f2);
+    fieldadd(&curr3, 1.0, curr, dt, &f2);
 
     /*	Step 4	*/
     periodic_ghost_zone(&curr3);
     compute_F(&f3, &curr3);
 
     fieldadd(next, 1.0, next, 1.0, curr);
-    fieldadd(next, 1.0, next, sys.dt/6.0, &f0);
-    fieldadd(next, 1.0, next, sys.dt/3.0, &f1);
-    fieldadd(next, 1.0, next, sys.dt/3.0, &f2);
-    fieldadd(next, 1.0, next, sys.dt/6.0, &f3);
+    fieldadd(next, 1.0, next, dt/6.0, &f0);
+    fieldadd(next, 1.0, next, dt/3.0, &f1);
+    fieldadd(next, 1.0, next, dt/3.0, &f2);
+    fieldadd(next, 1.0, next, dt/6.0, &f3);
 
     
     delete[] f0.v; delete[] f0.v_bar;
@@ -342,8 +347,15 @@ void Neu::Qke2::compute_F(field2_t *f, const field2_t *a) {
                     ADV2(f_adv.v, factor, a_ptr, 1);
                     ADV2(f_adv.v_bar, factor, a_bptr, 1);
 #endif
+
+#ifdef KO
+/*	Kreiss-Oliger dissipation (3-rd order)	*/
+                    double ko_eps = -1e-4/(dz*16);
+                    KO2(f_adv.v, ko_eps, a_ptr, 1);
+                    KO2(f_adv.v_bar, ko_eps, a_bptr, 1);
+#endif
                     /*	oscillation	*/
-#ifdef VACUUM
+#ifdef VACCUM
                     VAC2(H, osc.theta);
 #elif INT_VV
                     for (int kk = 0; kk < sys.Nvz; ++kk){
@@ -416,8 +428,17 @@ void Neu::Qke2::compute_F(field2_t *f, const field2_t *a) {
                             ADV2(f_adv.v_bar, factor2, a_bptr, sys.Nx);
 #endif
 
+#ifdef KO
+/*	Kreiss-Oliger dissipation (3-rd order)	*/
+                            double ko_eps = -1e-4/(dz*16);
+                            KO2(f_adv.v, ko_eps, a_ptr, 1);
+                            KO2(f_adv.v, ko_eps, a_ptr, sys.Nx);
+                            KO2(f_adv.v_bar, ko_eps, a_bptr, 1);
+                            KO2(f_adv.v_bar, ko_eps, a_bptr, sys.Nx);
+#endif
+
                             /*	oscillation	*/
-#ifdef VACUUM
+#ifdef VACCUM
                             VAC2(H, osc.theta);
 #elif INT_VV
                             for (int kkz = 0; kkz < sys.Nvz; ++kkz){
@@ -479,20 +500,30 @@ void Neu::Qke2::set_init(field2_t *start) {
             for (int k = 0; k < sys.Nvz; ++k){
                 for (int j = 0; j < sys.Nz; ++j){
                     size_t idx = index(sys.dim, j, k);
-                    double e = Gaussian(z[j]);
-                    double g_ = g(vz[k], 0.6)/2.0;
-                    double g_bar = g(vz[k], 0.53)/2.0;
+                    double e = Gaussian(1, z[j]);
+                    //double g_ = g(vz[k], 0.6)/2.0;
+                    //double g_bar = g(vz[k], 0.53)/2.0;
                     bzero(&start->v[idx], sizeof(op2_t));
                     bzero(&start->v_bar[idx], sizeof(op2_t));
-                    start->v[idx]._11 = g_*2*sqrt(1 - e*e);
-                    start->v[idx]._22 = 0;
-                    start->v[idx]._12 = g_*e;
-                    start->v[idx]._21 = g_*e;
+                    //start->v[idx]._11 = g_*2*sqrt(1 - e*e);
+                    //start->v[idx]._22 = 0;
+                    //start->v[idx]._12 = g_*e;
+                    //start->v[idx]._21 = g_*e;
 
-                    start->v_bar[idx]._11 = osc.alpha*g_bar*2*sqrt(1 - e*e);
+                    //start->v_bar[idx]._11 = osc.alpha*g_bar*2*sqrt(1 - e*e);
+                    //start->v_bar[idx]._22 = 0;
+                    //start->v_bar[idx]._12 = osc.alpha*g_bar*e;
+                    //start->v_bar[idx]._21 = osc.alpha*g_bar*e;
+                    start->v[idx]._11 = e;
+                    start->v[idx]._22 = 0;
+                    start->v[idx]._12 = 0;
+                    start->v[idx]._21 = start->v[idx]._12;
+                      
+                    start->v_bar[idx]._11 = e;
                     start->v_bar[idx]._22 = 0;
-                    start->v_bar[idx]._12 = osc.alpha*g_bar*e;
-                    start->v_bar[idx]._21 = osc.alpha*g_bar*e;
+                    start->v_bar[idx]._12 = 0;
+                    start->v_bar[idx]._21 = start->v_bar[idx]._12;
+
                 }
             }
             break;
@@ -505,40 +536,39 @@ void Neu::Qke2::set_init(field2_t *start) {
                     for (int jz = 0; jz < sys.Nz; ++jz){
                         for (int jx = 0; jx < sys.Nx; ++jx){
                             size_t idx = index(sys.dim, jx, jz, kx, kz);
-                            double ez = Gaussian(z[jz]);
-                            double ex = Gaussian(x[jx]);
+                            double e = Gaussian(2, x[jx], z[jz]);
                             //if (jz == 50 && jx == 50){
-                            //    printf("%lf %lf\n", ez, ex);
+                            //    printf("%ld z[%d] = %lf, x[%d] = %lf\n", idx, jz, z[jz], jx, x[jx]);
+                            //    printf("%lf \n", e);
                             //}
                             
-                            double gz = g(vz[kz], 0.6)/2.0;
-                            double gx = g(vx[kx], 0.6)/2.0;
-                            double gz_bar = g(vz[kz], 0.53)/2.0;
-                            double gx_bar = g(vx[kx], 0.53)/2.0;
+                            //double gz = g(vz[kz], 0.6)/2.0;
+                            //double gx = g(vx[kx], 0.6)/2.0;
+                            //double gz_bar = g(vz[kz], 0.53)/2.0;
+                            //double gx_bar = g(vx[kx], 0.53)/2.0;
                            
                             bzero(&start->v[idx], sizeof(op2_t));  
                             bzero(&start->v_bar[idx], sizeof(op2_t));
                             
-                            start->v[idx]._11 = gz*gx*2*sqrt(1-pow(osc.A*ex*ez,2));
-                            start->v[idx]._22 = 0;
-                            start->v[idx]._12  = gz*gx*osc.A*ex*ez;
-                            start->v[idx]._21 = start->v[idx]._12;
-                            
-                            start->v_bar[idx]._11 = osc.alpha*gz_bar*gx_bar*2*sqrt(1-pow(osc.A*ex*ez,2));
-                            start->v_bar[idx]._22 = 0;
-                            start->v_bar[idx]._12  = osc.alpha*gz_bar*gx_bar*osc.A*ex*ez;
-                            start->v_bar[idx]._21 = start->v_bar[idx]._12;
-                            
-                            //start->v[idx]._11 = ez*ex;
+                            //start->v[idx]._11 = gz*gx*2*sqrt(1-pow(osc.A*ex*ez,2));
                             //start->v[idx]._22 = 0;
-                            //start->v[idx]._12 = 0;
+                            //start->v[idx]._12  = gz*gx*osc.A*ex*ez;
                             //start->v[idx]._21 = start->v[idx]._12;
                             //
-                            //start->v_bar[idx]._11 = ez*ex;
+                            //start->v_bar[idx]._11 = osc.alpha*gz_bar*gx_bar*2*sqrt(1-pow(osc.A*ex*ez,2));
                             //start->v_bar[idx]._22 = 0;
-                            //start->v_bar[idx]._12 = 0;
+                            //start->v_bar[idx]._12  = osc.alpha*gz_bar*gx_bar*osc.A*ex*ez;
                             //start->v_bar[idx]._21 = start->v_bar[idx]._12;
-
+                            
+                            start->v[idx]._11 = e;
+                            start->v[idx]._22 = 0;
+                            start->v[idx]._12 = 0;
+                            start->v[idx]._21 = start->v[idx]._12;
+                            
+                            start->v_bar[idx]._11 = e;
+                            start->v_bar[idx]._22 = 0;
+                            start->v_bar[idx]._12 = 0;
+                            start->v_bar[idx]._21 = start->v_bar[idx]._12;
                         }
                     } 
                 }
@@ -604,10 +634,24 @@ void Neu::Qke2::field_to_pol(pol_t *P, const field2_t *fd) {
 
 }
 
-double Neu::Qke2::Gaussian(double z){
-    return exp(-pow(z-osc.z_0, 2)/(2*pow(osc.sigma,2)));
+double Neu::Qke2::Gaussian(int dim, ...){
+    double x, y, z;
+    va_list valist;
+    va_start(valist, dim);
+    if (dim == 1){
+        z = va_arg(valist, double);
+        va_end(valist);
+        return exp(-pow(z-osc.z_0, 2)/(2*pow(osc.sigma,2)));
+    }
+    else if (dim == 2){
+        x = va_arg(valist, double);
+        z = va_arg(valist, double);
+        va_end(valist); 
+        return exp(-(pow(x-osc.z_0,2)+pow(z-osc.z_0,2))/(2*pow(osc.sigma,2)));
+    }
+    else
+       return 0;
 }
-
 
 void Neu::Qke2::output_rho(const char *filename, field2_t *rho){
     std::ofstream file;
@@ -616,12 +660,21 @@ void Neu::Qke2::output_rho(const char *filename, field2_t *rho){
        std::cout << "*** Open fails: " << filename << std::endl;
     }
 
+    double a = pow(cos(osc.theta), 4) + 0.5*pow(sin(2*osc.theta), 2)*cos(2*osc.t) + pow(sin(osc.theta), 4);
+    
+    double rho_ee;
+    double error;
     switch (sys.dim){
         case 1:
             for (int k = 0; k < sys.Nvz; ++k){
                 for (int j = 0; j < sys.Nz; j+=1){
                     int idx = index(sys.dim, j, k);
-                    file << vz[k] << " " << z[j] << " " << creal(rho->v[idx]._11) << " " << creal(rho->v[idx]._12) << " " << cimag(rho->v[idx]._12) << " " << creal(rho->v[idx]._22) << std::endl;
+                    //rho_ee = a;
+                    rho_ee = a*Gaussian(1, z[j] - vz[k]*osc.t);
+                    
+                    //file << vz[k] << " " << z[j] << " " << creal(rho->v[idx]._11) << " " << creal(rho->v[idx]._12) << " " << cimag(rho->v[idx]._12) << " " << creal(rho->v[idx]._22) << std::endl;
+                    error = abs(creal(rho->v[idx]._11) - rho_ee);
+                    file << vz[k] << " " << z[j] << " " << creal(rho->v[idx]._11) << " " << rho_ee << " " << error << std::endl;
                 }
             } 
             break;
@@ -630,10 +683,14 @@ void Neu::Qke2::output_rho(const char *filename, field2_t *rho){
                 for (int kx = 0; kx < sys.Nvx; ++kx){
                     if (pow(vz[kz],2) + pow(vx[kx],2) > 1)
                         continue;
-                    for (int jz = 0; jz < sys.Nz; ++jz){
-                        for (int jx = 0; jx < sys.Nx; ++jx){
+                    for (int jz = 0; jz < sys.Nz; jz+=10){
+                        for (int jx = 0; jx < sys.Nx; jx+=10){
                             int idx = index(sys.dim, jx, jz, kx, kz);
-                            file << vz[kz] << " " << vx[kx] << " " << z[jz] << " " << x[jx] << " " <<  creal(rho->v[idx]._11) << " " << creal(rho->v[idx]._12) << " " << cimag(rho->v[idx]._12) << " " << creal(rho->v[idx]._22) << std::endl;
+                            //rho_ee = a;
+                            rho_ee = a*Gaussian(2,x[jx]-vx[kx]*osc.t, z[jz]-vz[kz]*osc.t);   
+                            error = abs(creal(rho->v[idx]._11) - rho_ee);
+                            //file << vz[kz] << " " << vx[kx] << " " << z[jz] << " " << x[jx] << " " <<  creal(rho->v[idx]._11) << " " << creal(rho->v[idx]._12) << " " << cimag(rho->v[idx]._12) << " " << creal(rho->v[idx]._22) << " " << rho_ee << std::endl;
+                            file << vz[kz] << " " << vx[kx] << " " << z[jz] << " " << x[jx] << " " <<  creal(rho->v[idx]._11) << " " << rho_ee << " " << error << std::endl;
                         }
                     }
                 }
@@ -685,14 +742,27 @@ void Neu::Qke2::output_P(const char *filename, pol_t *P){
 
 void Neu::Qke2::run(){
     char file[0x100];
+    printf("dt = %lf\n", dt);
+    switch (sys.dim){
+        case 1:
+           printf("dz = %lf\n", dz); 
+           break;
+        case 2:
+            printf("dx = %lf dz = %lf\n", dx, dz);
+            break;
+    }   
+
     set_init(&rho);
     for (int i = 0; i <= sys.Nt; ++i){
         printf("%d\n", i);
+        osc.t = i*dt;
         if (!(i & 1)) {
             if (i%10 == 0){
-                field_to_pol(&P, &rho);
-                sprintf(file, "P_%05d.txt", i); 
-                output_P(file, &P); 
+                //field_to_pol(&P, &rho);
+                //sprintf(file, "P_%05d.txt", i); 
+                //output_P(file, &P);
+                sprintf(file, "rho_%05d.txt", i);
+                output_rho(file, &rho); 
             }  
             rk4(&rho, &rho_next);
             
