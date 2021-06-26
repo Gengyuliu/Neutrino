@@ -11,7 +11,7 @@ typedef struct phys_sys_t {
     double  theta = 33.3;      /*	mixing angle	*/
     double  mu = 1.0;         /*	interaction strength	*/
  
-    double  t; 
+    int     n;                  /*	n-th time-iteration	*/ 
     int     init; 
     double  f_0; 
     double  alpha;
@@ -97,14 +97,17 @@ namespace Neu {
             double      dt;
             double      v1, v2;
             size_t      SIZE;
-            field2_t     rho;      
-            field2_t     rho_next;
-            pol_t        P; 
+            field2_t    rho_exact; 
+            field2_t    rho;      
+            field2_t    rho_next;
+            pol_t       P; 
             double  dx, dy, dz;
             double  dvx, dvy, dvz;
             double  *x, *y, *z;
             double  *vx, *vy, *vz;
             int     gx, gy, gz;
+
+            int     *NTx, *NTz;    //period of iterations for PBC
         public:    
             Qke2(const phys_sys_t _phys_sys, const num_sys_t _num_sys){
                 osc    = _phys_sys;
@@ -120,12 +123,15 @@ namespace Neu {
                         dvz = (v2 - v1)/sys.Nvz;
                         z   = new double[sys.Nz];
                         vz  = new double[sys.Nvz];
-                        
+                        NTz  = new int[sys.Nvz]; 
+
                         dt = _num_sys.CFL*dz/v2;
                         for (int j = 0; j < sys.Nz; ++j) 
-                           z[j] = sys.z1 + (j+0.5)*dz;
-                        for (int k = 0; k < sys.Nvz; ++k) 
-                           vz[k] = v1 + (k+0.5)*dvz;
+                            z[j] = sys.z1 + (j+0.5)*dz;
+                        for (int k = 0; k < sys.Nvz; ++k){ 
+                            vz[k] = v1 + (k+0.5)*dvz;
+                            NTz[k] = (int)(ceil((sys.z2 - sys.z1)/(dt*fabs(vz[k]))));
+                        }
 
                         break;
                     case 2:
@@ -138,21 +144,35 @@ namespace Neu {
                         z   = new double[sys.Nz];
                         vx  = new double[sys.Nvx];
                         vz  = new double[sys.Nvz];
+                        NTx  = new int[sys.Nvx];
+                        NTz  = new int[sys.Nvz];
 
                         dt = _num_sys.CFL*dz/v2;
                         for (int j = 0; j < sys.Nx; ++j)
                             x[j] = sys.x1 + (j+0.5)*dx;
                         for (int j = 0; j < sys.Nz; ++j)
                             z[j] = sys.z1 + (j+0.5)*dz;
-                        for (int k = 0; k < sys.Nvz; ++k)
+                        for (int k = 0; k < sys.Nvz; ++k){
                             vz[k] = v1 + (k+0.5)*dvz;
-                        for (int k = 0; k < sys.Nvx; ++k)
+                            NTz[k] = (int)(ceil((sys.z2-sys.z1)/(vz[k]*dt)));
+                        }
+                        for (int k = 0; k < sys.Nvx; ++k){
                             vx[k] = v1 + (k+0.5)*dvx;
+                            NTx[k] = (int)(ceil((sys.x2-sys.x1)/(vx[k]*dt)));
+                        }
+                        //for (int kz = 0; kz < sys.Nvz; ++kz){
+                        //    for (int kx = 0; kx < sys.Nvx; ++kx){
+                        //        double v = sqrt(pow(vx[kx],2) + pow(vz[kz],2));
+                        //        NT[kz*sys.Nvx+kx] = (int) (ceil(L/(v*dt)));
+                        //    }
+                        //}
                         break;
                     case 3:
                         SIZE = (size_t) (sys.Nx+2*gx)*(sys.Ny+2*gy)*(sys.Nz+2*gz)*sys.Nvx*sys.Nvy*sys.Nvz;
                         break;
                 }
+                rho_exact.v     = new op2_t[SIZE];
+                rho_exact.v_bar = new op2_t[SIZE];
                 rho.v           = new op2_t[SIZE];
                 rho.v_bar       = new op2_t[SIZE];
                 rho_next.v      = new op2_t[SIZE];
@@ -164,15 +184,18 @@ namespace Neu {
                 switch (sys.dim) {
                     case 1:
                         delete[] z; delete[] vz;
+                        delete[] NTz;
                         break;
                     case 2:
                         delete[] x; delete[] z;
                         delete[] vx; delete[] vz;
+                        delete[] NTx; delete[] NTz;
                         break;
                     case 3:
                         break;
                 
                 } 
+                delete[] rho_exact.v; delete [] rho_exact.v_bar;
                 delete[] rho.v; delete [] rho.v_bar;
                 delete[] rho_next.v; delete[] rho_next.v_bar;
                 delete[] P.v;   delete[] P.v_bar;
@@ -226,6 +249,8 @@ namespace Neu {
             
             double Gaussian(int dim, ...);
 
+            void vac_exact();
+
             void output_rho(const char *filename, field2_t *rho);
 
             void output_P(const char *filename, pol_t *P);
@@ -234,8 +259,8 @@ namespace Neu {
     double g(double u, double xi);
     
     class Qke3;
-    
-
 
 }
+
+static inline void ADV2(op2_t *y, double a, op2_t *x, size_t N);
 #endif
