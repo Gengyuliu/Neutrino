@@ -28,7 +28,7 @@ typedef struct num_sys_t {
     double  x1, x2, y1, y2, z1, z2;
     int     Nx, Ny, Nz;
     
-    int     Nvx, Nvy, Nvz;
+    int     Nphi,  Nvz;
 } num_sys_t;
 
 /*	2-flavor
@@ -102,9 +102,10 @@ namespace Neu {
             field2_t    rho_next;
             pol_t       P; 
             double  dx, dy, dz;
-            double  dvx, dvy, dvz;
-            double  *x, *y, *z;
-            double  *vx, *vy, *vz;
+            double  dvz, dphi;
+            double  *x, *z;
+            double  *vz, *phi;
+            double  *vx, *vy;
             int     gx, gy, gz;
 
             int     *NTx, *NTz;    //period of iterations for PBC
@@ -135,16 +136,19 @@ namespace Neu {
 
                         break;
                     case 2:
-                        SIZE = (size_t) (sys.Nx+2*gx)*(sys.Nz+2*gz)*sys.Nvx*sys.Nvz;
+                        SIZE = (size_t) (sys.Nx+2*gx)*(sys.Nz+2*gz)*sys.Nphi*sys.Nvz;
                         dx  = (sys.x2 - sys.x1)/sys.Nx;
                         dz  = (sys.z2 - sys.z1)/sys.Nz;
-                        dvx = (v2 - v1)/sys.Nvx;
                         dvz = (v2 - v1)/sys.Nvz;
+                        dphi= (2*M_PI)/sys.Nphi; 
                         x   = new double[sys.Nx];
                         z   = new double[sys.Nz];
-                        vx  = new double[sys.Nvx];
+                        phi = new double[sys.Nphi];
+                    
                         vz  = new double[sys.Nvz];
-                        NTx  = new int[sys.Nvx];
+                        vx  = new double[sys.Nvz*sys.Nphi];
+                        vy  = new double[sys.Nvz*sys.Nphi];
+                        NTx  = new int[sys.Nvz*sys.Nphi];
                         NTz  = new int[sys.Nvz];
 
                         dt = _num_sys.CFL*dz/v2;
@@ -152,13 +156,15 @@ namespace Neu {
                             x[j] = sys.x1 + (j+0.5)*dx;
                         for (int j = 0; j < sys.Nz; ++j)
                             z[j] = sys.z1 + (j+0.5)*dz;
-                        for (int k = 0; k < sys.Nvz; ++k){
-                            vz[k] = v1 + (k+0.5)*dvz;
-                            NTz[k] = (int)(ceil((sys.z2-sys.z1)/(vz[k]*dt)));
-                        }
-                        for (int k = 0; k < sys.Nvx; ++k){
-                            vx[k] = v1 + (k+0.5)*dvx;
-                            NTx[k] = (int)(ceil((sys.x2-sys.x1)/(vx[k]*dt)));
+                        for (int kz = 0; kz < sys.Nvz; ++kz){
+                            vz[kz] = v1 + (kz+0.5)*dvz;
+                            NTz[kz] = (int)(ceil((sys.z2-sys.z1)/(vz[kz]*dt)));
+                            for (int f = 0; f < sys.Nphi; ++f){
+                                phi[f] = (f + 0.5)*dphi;
+                                vx[kz*sys.Nphi+f] = sqrt(1-vz[kz]*vz[kz])*cos(phi[f]);
+                                vy[kz*sys.Nphi+f] = sqrt(1-vz[kz]*vz[kz])*sin(phi[f]); 
+                                NTx[kz*sys.Nphi + f] = (int)(ceil((sys.x2-sys.x1)/(vx[kz*sys.Nphi + f]*dt)));
+                            }
                         }
                         //for (int kz = 0; kz < sys.Nvz; ++kz){
                         //    for (int kx = 0; kx < sys.Nvx; ++kx){
@@ -168,7 +174,7 @@ namespace Neu {
                         //}
                         break;
                     case 3:
-                        SIZE = (size_t) (sys.Nx+2*gx)*(sys.Ny+2*gy)*(sys.Nz+2*gz)*sys.Nvx*sys.Nvy*sys.Nvz;
+                        //SIZE = (size_t) (sys.Nx+2*gx)*(sys.Ny+2*gy)*(sys.Nz+2*gz)*sys.Nphi*sys.Nvy*sys.Nvz;
                         break;
                 }
                 rho_exact.v     = new op2_t[SIZE];
@@ -184,12 +190,13 @@ namespace Neu {
                 switch (sys.dim) {
                     case 1:
                         delete[] z; delete[] vz;
-                        delete[] NTz;
+                        //delete[] NTz;
                         break;
                     case 2:
                         delete[] x; delete[] z;
-                        delete[] vx; delete[] vz;
-                        delete[] NTx; delete[] NTz;
+                        delete[] vz; delete[] phi; 
+                        delete[] vx; delete[] vy;
+                        //delete[] NTx; delete[] NTz;
                         break;
                     case 3:
                         break;
@@ -202,7 +209,7 @@ namespace Neu {
             }
             size_t index(int dim, ...) {
                 //dim = sys.dim;
-                int jx, jy, jz, kx, ky, kz;
+                int jx, jy, jz, f, kz;
                 va_list valist;
                 va_start(valist, dim); 
                 if (dim == 1){
@@ -214,20 +221,20 @@ namespace Neu {
                 else if (dim == 2){   
                     jx = va_arg(valist, int);
                     jz = va_arg(valist, int);
-                    kx = va_arg(valist, int);
+                    f = va_arg(valist, int);
                     kz = va_arg(valist, int);
                     va_end(valist);
-                    return (size_t)(kz*sys.Nvx*(sys.Nz+2*gz)*(sys.Nx+2*gx) + kx*(sys.Nz+2*gz)*(sys.Nx+2*gx) + (jz+gz)*(sys.Nx+2*gx) + (jx+gx));
+                    return (size_t)(kz*sys.Nphi*(sys.Nz+2*gz)*(sys.Nx+2*gx) + f*(sys.Nz+2*gz)*(sys.Nx+2*gx) + (jz+gz)*(sys.Nx+2*gx) + (jx+gx));
                 } 
                 else if (dim == 3){    
                     jx = va_arg(valist, int);
                     jy = va_arg(valist, int);
                     jz = va_arg(valist, int);
-                    kx = va_arg(valist, int);
-                    ky = va_arg(valist, int);
+                    f = va_arg(valist, int);
+                    //ky = va_arg(valist, int);
                     kz = va_arg(valist, int);
                     va_end(valist);
-                    return (size_t)(kz*sys.Nvx*sys.Nvy*(sys.Nz+2*gz)*(sys.Ny+2*gy)*(sys.Nx+2*gx) + ky*sys.Nvx*(sys.Nz+2*gz)*(sys.Ny+2*gy)*(sys.Nx+2*gx) + kx*(sys.Nz+2*gz)*(sys.Ny+2*gy)*(sys.Nx+2*gx) + (jz+gz)*(sys.Nx+2*gx)*(sys.Ny+2*gy) + (jy+gy)*(sys.Nx+2*gx) + (jx+gx));
+                    return 0;
                 }
                 else 
                    return 0;
@@ -256,7 +263,7 @@ namespace Neu {
             void output_P(const char *filename, pol_t *P);
             void run();
     };
-    double g(double u, double xi);
+    double g(double u, double xi, double v);
     
     class Qke3;
 
