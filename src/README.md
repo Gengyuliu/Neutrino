@@ -1,5 +1,14 @@
 # Neutrino Oscillation Simulation
 
+## Execution
+To compile, `make $flag`, where `$flag` is the following:
+
+`vac` is for vacuum oscillation + advection
+
+`int` is for interaction + advection 
+
+`adv` is for pure advection
+
 ## Objects in Simulation
 
 We declare required objects to suit the need of different flavor system. 
@@ -7,7 +16,7 @@ We declare required objects to suit the need of different flavor system.
 For example, `DECLARE_OBJECT(2)` means that we declare objects for two-flavor system.
 
 The type of density matrix we used is `op##flavor##_t`, which is all defined inside the macro `DECLARE_OBJECT`:
-```c=
+```C=
 #define DECLARE_OBJECTS(flavor)                 \
 ...                                             \
    typedef struct {                             \            
