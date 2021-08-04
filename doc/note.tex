@@ -101,6 +101,34 @@
  \end{align*}
 
 
+ \section{Numerical Specification}%
+ \label{sec:Numerical Simulation}
+
+ The e.o.m. for the mixed state of neutrinos described by mean-field density matrix $\varrho(t,\vb{x}, \vb{p})$:
+ \[
+ \left(  \frac{\partial}{\partial t} + \vb{v}\cdot \frac{\partial}{\partial \vb{x}} + \vb{f} \cdot \frac{\partial}{\partial \vb{p}}\right) \varrho(t,\vb{x}, \vb{p}) = i \comm{\varrho (t, \vb{x}, \vb{p})}{\mathcal{H}(t, \vb{x}, \vb{p})} + C[\varrho].\] 
+
+ \begin{align*}
+    \varrho(t,\vb{x}, \vb{p}) &= \frac{f_{\nu_{e}} + f_{\nu_{x}}}{2}\mathcal{I} + G_{\nu}(\vb{p}) \rho(t,\vb{x}, \hat{\vb{p}})\\
+    \mathcal{H}_{\nu\nu} &= \sqrt{2}G_{F}\int \frac{d^{3}\vb{q}}{(2\pi)^{3}}(1 - \hat{\vb{p}}\cdot \hat{\vb{q}})\big(\varrho_{\vb{q}}(t, \vb{x}) - \bar{\varrho}_{\vb{q}}(t, \vb{x})\big)
+ .\end{align*}
+
+ \noindent We may integrate out the energy $\abs{\vb{q}} = \varepsilon_{\nu}$, and define the angular ELN distribution as: 
+ \[
+ g_{\nu}(\hat{\vb{p}}) = \frac{1}{n_{\nu_{e}}} \int \frac{\varepsilon_{\nu}^{2}d\varepsilon_{\nu}}{2\pi^{2}}\big(G_{\nu}(\vb{p}) - G_{\bar{\nu}}(\vb{p})\big) .\]
+ So that the interaction Hamiltonian becomes:
+ \[
+ H_{\nu\nu}(t, \vb{x}, \hat{\vb{p}}) = \mu \int \frac{d \hat{\vb{q}}}{4\pi}(1 - \hat{\vb{p}} \cdot \hat{\vb{q}}) \Big( g_{\nu)}(\hat{\vb{q}}) \rho_{\hat{\vb{q}}} - g_{\bar{\nu}}(\hat{\vb{q}}) \bar{\rho}_{\hat{\vb{q}}} \Big) ,  \hspace{0.1cm}\mu = \sqrt{2}G_{F}n_{\nu_{e}} .\] 
+
+\noindent Given the explicit form:
+\begin{align*}
+   \hat{\vb{p}} &= \vb{v} = (\sqrt{1-v_{z}^{2}}\cos \varphi,  \sqrt{1-v_{z}^{2}}\sin \varphi, v_{z})\\ 
+   \int d\hat{\vb{q}} &= \int _{-1}^{1}dv_{z}\int_{0}^{2\pi} d\varphi\\
+   \vb{v} \cdot \nabla &= \sqrt{1-v_{z}^{2}} \Big(\cos \varphi \frac{\partial}{\partial x} + \sin\varphi \frac{\partial}{\partial y} \Big) + v_{z} \frac{\partial}{\partial z} 
+.\end{align*}
+
+
+
 \subsection{Time Independent Hamiltonain}%
 \label{sub:Time Independent Hamiltonain}
 \begin{align*}
@@ -111,6 +139,8 @@
 \end{pmatrix}\\
       \Rightarrow \varrho(t,\vb{x}) &= e^{-i\mathcal{H}t}f(\vb{x} - \vb{v}t)e^{i\mathcal{H}t} 
 .\end{align*}
+
+
 
 Given the explicit form of initial condition, the solution is
 \begin{align*}
@@ -128,15 +158,29 @@ Given the explicit form of initial condition, the solution is
       \varrho_{ex}(t, \vb{x}) &= \varrho_{xe}^{*} = 2i \Big(f_{ee}(\vb{x} - \vb{v}t) - f_{x x} (\vb{x} - \vb{v}t)\Big) \hspace{0.1cm}\sin(t) \sin(\theta) \cos(\theta) \Big(e^{it}\cos^{2}(\theta) + e^{-it}\sin ^{2}(\theta)\Big)\\
       \varrho_{x x}(t, \vb{x}) &= f_{x x}(\vb{x} - \vb{v}t)\Big(\cos^{4}(\theta) + 2 \cos(2t) \cos^{2}(\theta) \sin^{2}(\theta)  + \sin ^{4}(\theta) \Big)  + f_{ee}(\vb{x} - \vb{v}t)\sin ^{2}(t) \sin ^{2}(2\theta)
 .\end{align*}
+\\
 
- \section{Numerical Specification}%
- \label{sec:Numerical Simulation}
 
- The e.o.m. for the mixed state of neutrinos described by mean-field density matrix $\varrho(t,\vb{x}, \vb{p})$:
- \[
- \left(  \frac{\partial}{\partial t} + \vb{v}\cdot \frac{\partial}{\partial \vb{x}} + \vb{f} \cdot \frac{\partial}{\partial \vb{p}}\right) \varrho(t,\vb{x}, \vb{p}) = i \comm{\varrho (t, \vb{x}, \vb{p})}{\mathcal{H}(t, \vb{x}, \vb{p})} + C[\varrho].\] 
+\subsection{Numerical Approach in 1+2+2 dimensions}%
+\label{sub:Numrical Approach in 1+2+2 dimensions}
 
- \subsection{Numerical Setup}%
+\begin{itemize}
+   \item $\partial _{t} \varrho = - \vb{v}\cdot \nabla \varrho + i \comm{\varrho}{\matcal{H}} \equiv g(t,  \varrho)$
+   \item $\vb{v} \cdot \nabla \varrho \rightarrow \frac{v_{x}}{12 dx}\left(\varrho_{i-2,j} - 8\varrho_{i-1, j} + 8\varrho_{i+1, j} - \varrho_{i+2,j }\right) + \frac{v_{z}}{12dz} \left(  \varrho_{i,j-2} -8\varrho_{i,j-1} + 8\varrho_{i,j+1} -\varrho_{i,j+2} \right)$
+   \item index : $(j+g_{z})*(N_{x} + 2*g_{x}) + (i+g_{x})$
+   \item $g_{x}, g_{z}$ are number of grids in ghost zones
+   \item RK4 -- $\varrho ^{n+1} = \varrho^{n} + \frac{dt}{6}\left( g_{0} + 2 g_{1} + 2g_{2} + g_{3}\right) + O(dt ^{5})$
+        \begin{itemize}
+           \item  $g_{0} = g(t_{n}, \varrho^{n})$
+           \item $g_{1} = g(t_{n} + \frac{dt}{2}, \varrho^{n} + \frac{dt}{2}g_{0})$
+           \item $g_{2} = g(t_{n} + \frac{dt}{2} , \varrho^{n} + \frac{dt}{2}g_{1})$
+           \item $g_{3} = g(t_{n} + dt, \varrho^{n} + dt g_{2})$
+        \end{itemize}
+ \end{itemize}
+
+
+
+\subsection{Numerical Setup}%
  \label{sub:Perturbation from an initial state}
 
  Consider two-flavor system, and impose the translation symmetry on both $x$ and $y$ dimensions, the e.o.m. for neutrino and antineutrino: 
@@ -190,7 +234,7 @@ Given the explicit form of initial condition, the solution is
    \begin{tabular}{c c c c}
       & $t$ & $z$ & $v_{z}$ \\
       step & $\delta t$ &  $\delta z$ &  $\delta v_{z}$\\
-           & $M_{1}$ & $M_{2}$ & $N$ \\
+      numbers& $N_{t}$ & $N_{z}$ & $N_{v_{z}}$ \\
       index & $i_1$ & $i_2$ & $k$
    \end{tabular}
 \end{center}
@@ -203,40 +247,7 @@ Given the explicit form of initial condition, the solution is
 
 
 
-\textbf{Algorithm: Lax-Wendroff Method}:\\
-
-\noindent Using the center space discretization
-\[
-\partial_{z} \rho \rightarrow \frac{\rho_{i_1, i_2+1} - \rho_{i_1, i_2-1}}{2 \delta z}
-.\] 
-
-\[
-   \rho(t+\delta t, z) = \rho(t,z) + \delta t \hspace{0.1cm}\frac{\partial \rho(t,z)}{\partial t} + \frac{1}{2}\delta t^{2}\hspace{0.1cm} \frac{\partial^{2}\rho(t,z)}{\partial t^{2}} + O(\delta t^{3})
-.\] \\
-
-\noindent Express the density matrix at  $i_{1}+1$-th time in terms of that at $i_{1}$\\
-\[
-    \rho^{k}_{i_1+1, i_2} = \rho^{k}_{i_1, i_2} + F_{\text{trnspt}}(\rho^{k}_{i_1}) + F_{\text{osc}}(\rho^{k}_{i_1})
-.\]
-\[
-    F_{\text{trnspt}}(\rho^{k}_{i_1}) &= -\frac{c}{2}(\rho^{k}_{i_1, i_2+1} - \rho^{k}_{i_1, i_2-1}) + \frac{c^{2}}{2}(\rho^{k}_{i_1, i_2+1} - 2\rho^{k}_{i_1, i_2} + \rho^{k}_{i_1, i_2-1}).\] 
-
-\[
-F_{\text{osc}}(\rho^{k}_{i_1}) &= F_{\text{1}}(\rho^{k}_{i_1}) + F_{2}(\rho^{k}_{i_1}).\] 
-\[
-F_{1}(\rho^{k}_{i_1}) &= i\delta t[\rho^{k}_{i_1, i_2}, \mathcal{H}^{k}_{i_1, i_2}] - \frac{ic \delta t}{2}[\rho^{k}_{i_1, i_2+1} - \rho^{k}_{i_1, i_2-1}, \mathcal{H}^{k}_{i_1, i_2}] - \frac{\delta t^{2}}{2}[[\rho^{k}_{i_1, i_2}, \mathcal{H}^{k}_{i_1, i_2}], \mathcal{H}^{k}_{i_1, i_2}] .\]   
-   \[
-    F_{2} (\rho ^{k}_{i_1})&= - \frac {1}{4}ic \delta t \hspace{0.1cm} \comm{\rho ^{k}_{i_1,i_2}}{\mathcal{A}} + \frac{1}{2} i\delta t ^{2} \hspace{0.1cm}\comm{\rho^{k}_{i_1, i_2, }}{\mathcal{B}} \rightarrow \text{interaction}.\]  
-
-
-    \[
-    \mathcal{H}^{k}_{i_1,i_2} = \mathcal{H}_{\text{vac}} + \mathcal{H}^{k}_{\nu\nu, i_1, i_2} .\] 
-\[
-\mathcal{A} = \frac{\mu}{N} \sum_{k'=0}^{N}\Big(1 - \frac{kk'}{N^{2}}\Big)\left( (\rho^{k'}_{i_1, i_2+1} - \rho^{k'}_{i_1, i_2-1}) - (\bar\rho^{*k'}_{i_1, i_2+1} - \bar\rho^{*k'}_{i_1, i_2-1}) \right) \sim \text{( $\partial _{z}\mathcal{H}$ )} .\] 
-
-\[
-\mathcal{B}  &= \frac{\mu}{N} \sum _{k'=0}^{N}\Big(  1 - \frac{kk'}{N^{2}}\Big) \left( (i \comm{\rho^{k'}_{i_1, i_2}}{\mathcal{H}^{k'}_{i_1, i_2}} - \rho^{k'}_{i_1, i_2+1} + \rho^{k'}_{i_1, i_2-1}) - (i \comm{\bar \rho^{*k'}_{i_1, i_2}}{\overline{\mathcal{H}}^{*k'}_{i_1, i_2}} - \bar\rho^{*k'}_{i_1, i_2+1} + \bar\rho^{*k'}_{i_1, i_2-1})  \right) \sim \text{ ( $\partial _{t}\mathcal{H}$ )}.\] 
-The above Courant-Friedrichs-Lewy (CFL) stability criterion:
+\noindent The above Courant-Friedrichs-Lewy (CFL) stability criterion:
 \[
 c \equiv \frac{\abs{v_{z}}\delta t}{\delta z}\leq 1 .\] 
 
