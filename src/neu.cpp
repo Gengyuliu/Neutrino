@@ -12,9 +12,44 @@
 #include <complex.h>
 #include <iostream>
 #include <fstream>
+#include "objects.hpp"
 #include "neu.hpp"
 
 #define sgn(v) ((v>0) - (v<0)) //sign function in branchless implementation
+
+
+
+#define DECLARE_UTIL(flavor)    \
+    static inline void ASSIGN##flavor(op##flavor##_t *y, op##flavor##_t *x) { \
+        FOR(m, flavor*flavor){                \
+            y->element[m]= x->element[m];    \
+        }   \
+    }\
+    static inline void ADV##flavor(op##flavor##_t *y, cnum a, op##flavor##_t *x, size_t N){                   \
+        FOR(m, flavor*flavor)             \
+            y->element[m] += a*(8.0*(x[1*N].element[m] - x[-1*N].element[m]) - (x[2*N].element[m]- x[-2*N].element[m]));    \
+    }                                                       \
+                                                            \
+    static inline void KO##flavor(op##flavor##_t *y, cnum a, op##flavor##_t *x, size_t N){                    \
+        FOR(m, flavor*flavor)             \
+            y->element[m] += a*((x[-2*N].element[m] + x[2*N].element[m]) - 4*(x[-1*N].element[m] + x[-1*N].element[m]) + 6*x[0].element[m]);\
+    }                           \
+                                \
+    static inline void MAT##flavor##_ADD(op##flavor##_t *C, cnum a, op##flavor##_t *A, cnum b, op##flavor##_t *B){           \
+        FOR(m, flavor*flavor)             \
+            C->element[m] = a*A->element[m] + b*B->element[m]; \
+    }                                                       \
+    static inline void INT##flavor(op##flavor##_t *A, cnum a, const op##flavor##_t *B, const op##flavor##_t *C){                          \
+        FOR(m, flavor*flavor)                                         \
+            A->element[m] += a*(B->element[m] - C->element[m]);    \
+    }
+
+
+
+
+DECLARE_UTIL(2)
+DECLARE_UTIL(3) 
+#undef DECLARE_UTIL
 
 void Neu::parsing(int argc, char *const *argv, phys_sys_t *phys_sys, num_sys_t *num_sys){
     int opt;
@@ -134,137 +169,95 @@ void Neu::parsing(int argc, char *const *argv, phys_sys_t *phys_sys, num_sys_t *
 }
 
 
-#define MAT2_ADD(C, a, A, b, B) {   \
-    C._11 = a*A._11 + b*B._11;      \
-    C._12 = a*A._12 + b*B._12;      \
-    C._21 = a*A._21 + b*B._21;      \
-    C._22 = a*A._22 + b*B._22;      \
-}
-
-//#define ADV2(y, a, x, N) {      \
-//    y._11 += a*(8.0*(x[1*N]._11 - x[-1*N]._11) - (x[2*N]._11 - x[-2*N]._11)); \
-//    y._12 += a*(8.0*(x[1*N]._12 - x[-1*N]._12) - (x[2*N]._12 - x[-2*N]._12)); \
-//    y._21 += a*(8.0*(x[1*N]._21 - x[-1*N]._21) - (x[2*N]._21 - x[-2*N]._21)); \
-//    y._22 += a*(8.0*(x[1*N]._22 - x[-1*N]._22) - (x[2*N]._22 - x[-2*N]._22)); \
-//}
-
-static inline void ADV2(op2_t *y, double a, op2_t *x, size_t N){
-    y->_11 += a*(8.0*(x[1*N]._11 - x[-1*N]._11) - (x[2*N]._11 - x[-2*N]._11));
-    y->_12 += a*(8.0*(x[1*N]._12 - x[-1*N]._12) - (x[2*N]._12 - x[-2*N]._12));
-    y->_21 += a*(8.0*(x[1*N]._21 - x[-1*N]._21) - (x[2*N]._21 - x[-2*N]._21));
-    y->_22 += a*(8.0*(x[1*N]._22 - x[-1*N]._22) - (x[2*N]._22 - x[-2*N]._22));
-
-}
-
-static inline void KO2(op2_t *y, double a, op2_t *x, size_t N){
-    y->_11 += a*(x[2*N]._11+x[-2*N]._11-4*(x[1*N]._11+x[-1*N]._11)+6*x[0]._11);
-    y->_12 += a*(x[2*N]._12+x[-2*N]._12-4*(x[1*N]._12+x[-1*N]._12)+6*x[0]._12); 
-    y->_21 += a*(x[2*N]._21+x[-2*N]._21-4*(x[1*N]._21+x[-1*N]._21)+6*x[0]._21); 
-    y->_22 += a*(x[2*N]._22+x[-2*N]._22-4*(x[1*N]._22+x[-1*N]._22)+6*x[0]._22); 
-}
 
 #define VAC2(H, theta){ \
-    H.v._11 = -cos(2.0*theta);  \
-    H.v._12 = sin(2.0*theta);   \
-    H.v._21 = sin(2.0*theta);   \
-    H.v._22 = cos(2.0*theta);   \
+    H.v.element[0] += -cos(2.0*theta);  \
+    H.v.element[1] += sin(2.0*theta);   \
+    H.v.element[2] += sin(2.0*theta);   \
+    H.v.element[3] += cos(2.0*theta);   \
     H.v_bar = H.v;              \
 }
 
 #define CONJ2(A, B){ \
-    A._11 = B._11;          \
-    A._12 = conj(B._12);    \
-    A._21 = conj(B._21);    \
-    A._22 = B._22;          \
-}
-
-#define INT2(A, a, B, C){  \
-    A._11 += a*(B._11 - C._11); \
-    A._12 += a*(B._12 - C._12); \
-    A._21 += a*(B._21 - C._21); \
-    A._22 += a*(B._22 - C._22); \
+    A.element[0] = B.element[0];          \
+    A.element[1] = conj(B.element[1]);    \
+    A.element[2] = conj(B.element[2]);    \
+    A.element[3] = B.element[3];          \
 }
 
 #define COMMUTATOR2(C, a, A, B){ \
-    C._11 = a*(A._12*B._21 - A._21*B._12);  \
-    C._12 = a*((A._11 - A._22)*B._12 + A._12*(B._22 - B._11));  \
-    C._21 = a*((A._22 - A._11)*B._21 + A._21*(B._11 - B._22));  \
-    C._22 = a*(A._21*B._12 - A._12*B._21);  \
+    C.element[0] += a*(A.element[1]*B.element[2] - A.element[2]*B.element[1]);\
+    C.element[1] += a*((A.element[0] - A.element[3])*B.element[1] + A.element[1]*(B.element[3] - B.element[0]));  \
+    C.element[2] += a*((A.element[3] - A.element[0])*B.element[2] + A.element[2]*(B.element[0] - B.element[3]));  \
+    C.element[3] += a*(A.element[2]*B.element[1] - A.element[1]*B.element[2]);\
 }
 
-//#define KO2(y, a, x, N) { \
-//    y._11 += a*(x[2*N]._11+x[-2*N]._11 - 4*(x[1*N]._11+x[-1*N]._11) + 6*x[0]._11); \
-//    y._12 += a*(x[2*N]._12+x[-2*N]._12 - 4*(x[1*N]._12+x[-1*N]._12) + 6*x[0]._12); \
-//    y._21 += a*(x[2*N]._21+x[-2*N]._21 - 4*(x[1*N]._21+x[-1*N]._21) + 6*x[0]._21); \
-//    y._22 += a*(x[2*N]._22+x[-2*N]._22 - 4*(x[1*N]._22+x[-1*N]._22) + 6*x[0]._22); \
-//}
-//
 void Neu::Qke2::rk4(field2_t *curr, field2_t *next) {
-    field2_t f0, f1, f2, f3;
-    field2_t curr1, curr2, curr3; 
+    field2_t *f0, *f1, *f2, *f3;
+    field2_t *curr1, *curr2, *curr3; 
     for (size_t i = 0; i < SIZE; ++i){
-        bzero(&next->v[i], sizeof(op2_t));
-        bzero(&next->v_bar[i], sizeof(op2_t));
+        FOR(m, 4){
+            next->v[i].element[m] = 0.0;
+            next->v_bar[i].element[m] = 0.0;
+        }
     }
-    f0.v = new op2_t[SIZE]; f0.v_bar = new op2_t[SIZE];
-    f1.v = new op2_t[SIZE]; f1.v_bar = new op2_t[SIZE];
-    f2.v = new op2_t[SIZE]; f2.v_bar = new op2_t[SIZE];
-    f3.v = new op2_t[SIZE]; f3.v_bar = new op2_t[SIZE];
-    curr1.v = new op2_t[SIZE]; curr1.v_bar = new op2_t[SIZE];
-    curr2.v = new op2_t[SIZE]; curr2.v_bar = new op2_t[SIZE];
-    curr3.v = new op2_t[SIZE]; curr3.v_bar = new op2_t[SIZE];
+    f0 = make_field2(SIZE);
+    f1 = make_field2(SIZE);
+    f2 = make_field2(SIZE);
+    f3 = make_field2(SIZE);
+    curr1 = make_field2(SIZE);
+    curr2 = make_field2(SIZE);
+    curr3 = make_field2(SIZE);
+    
 
     /*	Step 1	*/    
     periodic_ghost_zone(curr);
-    compute_F(&f0, curr);
-    fieldadd(&curr1, 1.0, curr, 0.5*dt, &f0);
+    compute_F(f0, curr);
+    fieldadd(curr1, 1.0, curr, 0.5*dt, f0);
 
     /*	Step 2	*/
-    periodic_ghost_zone(&curr1);
-    compute_F(&f1, &curr1);
-    fieldadd(&curr2, 1.0, curr, 0.5*dt, &f1);
+    periodic_ghost_zone(curr1);
+    compute_F(f1, curr1);
+    fieldadd(curr2, 1.0, curr, 0.5*dt, f1);
     
     /*	Step 3	*/
-    periodic_ghost_zone(&curr2);
-    compute_F(&f2, &curr2);
-    fieldadd(&curr3, 1.0, curr, dt, &f2);
+    periodic_ghost_zone(curr2);
+    compute_F(f2, curr2);
+    fieldadd(curr3, 1.0, curr, dt, f2);
 
     /*	Step 4	*/
-    periodic_ghost_zone(&curr3);
-    compute_F(&f3, &curr3);
+    periodic_ghost_zone(curr3);
+    compute_F(f3, curr3);
 
     fieldadd(next, 1.0, next, 1.0, curr);
-    fieldadd(next, 1.0, next, dt/6.0, &f0);
-    fieldadd(next, 1.0, next, dt/3.0, &f1);
-    fieldadd(next, 1.0, next, dt/3.0, &f2);
-    fieldadd(next, 1.0, next, dt/6.0, &f3);
+    fieldadd(next, 1.0, next, dt/6.0, f0);
+    fieldadd(next, 1.0, next, dt/3.0, f1);
+    fieldadd(next, 1.0, next, dt/3.0, f2);
+    fieldadd(next, 1.0, next, dt/6.0, f3);
 
-    
-    delete[] f0.v; delete[] f0.v_bar;
-    delete[] f1.v; delete[] f1.v_bar;
-    delete[] f2.v; delete[] f2.v_bar;
-    delete[] f3.v; delete[] f3.v_bar;
-    delete[] curr1.v; delete[] curr1.v_bar;
-    delete[] curr2.v; delete[] curr2.v_bar;
-    delete[] curr3.v; delete[] curr3.v_bar;
+   
+    free_field2(f0);
+    free_field2(f1);
+    free_field2(f2);
+    free_field2(f3);
+    free_field2(curr1);
+    free_field2(curr2);
+    free_field2(curr3);
+
 
 }
 
 
-void Neu::Qke2::fieldadd(field2_t *C, const cnum a, const field2_t *A, const cnum b, const field2_t *B) {
+void Neu::Qke2::fieldadd(field2_t *C, const cnum a, field2_t *A, const cnum b, field2_t *B) {
     switch (sys.dim){
         case 1:
-#pragma omp parallel for
+#pragma omp parallel for 
            for (int k = 0; k < sys.Nvz; ++k){
                 for (int j = 0; j < sys.Nz; ++j){
-                    //int idx = _index(i2, k, osc);
-                    //int _j = j%sys.Nz;
-                    //if (_j < 0)
-                    //    _j += sys.Nz;
                     size_t idx = index(sys.dim, j, k);
 
-                    MAT2_ADD(C->v[idx], a, A->v[idx], b, B->v[idx]);
-                    MAT2_ADD(C->v_bar[idx], a, A->v_bar[idx], b, B->v_bar[idx]);
+                    MAT2_ADD(&C->v[idx], a, &A->v[idx], b, &B->v[idx]);
+                    MAT2_ADD(&C->v_bar[idx], a, &A->v_bar[idx], b, &B->v_bar[idx]);
                 }
             }
             break;
@@ -272,13 +265,11 @@ void Neu::Qke2::fieldadd(field2_t *C, const cnum a, const field2_t *A, const cnu
 #pragma omp parallel for
             for (int kz = 0; kz < sys.Nvz; ++kz){
                 for (int f = 0; f < sys.Nphi; ++f){
-                    //if (pow(vz[kz],2) + pow(phi[kx],2) > 1)
-                    //    continue; 
                     for (int jz = 0; jz < sys.Nz; ++jz){
                         for (int jx = 0; jx < sys.Nx; ++jx){
                             size_t idx = index(sys.dim, jx, jz, f, kz);
-                            MAT2_ADD(C->v[idx], a, A->v[idx], b, B->v[idx]);
-                            MAT2_ADD(C->v_bar[idx], a, A->v_bar[idx], b, B->v_bar[idx]);
+                            MAT2_ADD(&C->v[idx], a, &A->v[idx], b, &B->v[idx]);
+                            MAT2_ADD(&C->v_bar[idx], a, &A->v_bar[idx], b, &B->v_bar[idx]);
                         }
                     }
                 }
@@ -297,13 +288,21 @@ void Neu::Qke2::periodic_ghost_zone(field2_t *A) {
             for (int k = 0; k < sys.Nvz; ++k){
                 for (int j = 0; j < gz; ++j){
                     /*	lower side	*/ 
-                    size_t idx = index(sys.dim, -j-1, k);
-                    A->v[idx] = A->v[index(sys.dim, sys.Nz-j-1,k)];
-                    A->v_bar[idx] = A->v_bar[index(sys.dim, sys.Nz-j-1,k)];
+                    size_t idx_l = index(sys.dim, -j-1, k);
+                    size_t idx_r = index(sys.dim, sys.Nz+j, k);
+                    size_t idx;
+                    idx = index(sys.dim, sys.Nz-j-1, k);
+                    ASSIGN2(&A->v[idx_l], &A->v[idx]);
+                    ASSIGN2(&A->v_bar[idx_l], &A->v_bar[idx]);
+                    //A->v[idx] = A->v[index(sys.dim, sys.Nz-j-1,k)];
+                    //A->v_bar[idx] = A->v_bar[index(sys.dim, sys.Nz-j-1,k)];
                     /*	lower side	*/
-                    idx = index(sys.dim, sys.Nz+j,k);
-                    A->v[idx] = A->v[index(sys.dim, j, k)];
-                    A->v_bar[idx] = A->v_bar[index(sys.dim, j, k)];
+                    idx = index(sys.dim, j,k);
+                    ASSIGN2(&A->v[idx_r], &A->v[idx]);
+                    ASSIGN2(&A->v_bar[idx_r], &A->v_bar[idx]);
+
+                    //A->v[idx] = A->v[index(sys.dim, j, k)];
+                    //A->v_bar[idx] = A->v_bar[index(sys.dim, j, k)];
                 }
             }
             break;
@@ -319,12 +318,16 @@ void Neu::Qke2::periodic_ghost_zone(field2_t *A) {
                             size_t idx = index(sys.dim, jx, -jz-1, f, kz);
                             size_t id1 = index(sys.dim, jx,sys.Nz-jz-1,f,kz); 
                             size_t id2 = index(sys.dim, jx,jz, f, kz);
-                            A->v[idx] = A->v[id1];
-                            A->v_bar[idx] = A->v_bar[id1];
+                            ASSIGN2(&A->v[idx], &A->v[id1]);
+                            ASSIGN2(&A->v_bar[idx], &A->v_bar[id1]);
+                            //A->v[idx] = A->v[id1];
+                            //A->v_bar[idx] = A->v_bar[id1];
                             
                             idx = index(sys.dim, jx, sys.Nz+jz, f, kz);
-                            A->v[idx] = A->v[id2];
-                            A->v_bar[idx] = A->v_bar[id2];
+                            ASSIGN2(&A->v[idx], &A->v[id2]);
+                            ASSIGN2(&A->v_bar[idx], &A->v_bar[id2]);
+                            //A->v[idx] = A->v[id2];
+                            //A->v_bar[idx] = A->v_bar[id2];
                         }
                     }
                     for (int jz = 0; jz < sys.Nz; ++jz){
@@ -333,12 +336,17 @@ void Neu::Qke2::periodic_ghost_zone(field2_t *A) {
                             size_t idx = index(sys.dim, -jx-1, jz, f, kz);
                             size_t id1 = index(sys.dim, sys.Nx-jx-1,jz,f,kz);
                             size_t id2 = index(sys.dim, jx, jz, f, kz);
-                            A->v[idx] = A->v[id1];
-                            A->v_bar[idx] = A->v_bar[id1];
+                            ASSIGN2(&A->v[idx], &A->v[id1]);
+                            ASSIGN2(&A->v_bar[idx], &A->v_bar[id1]);
+
+                            //A->v[idx] = A->v[id1];
+                            //A->v_bar[idx] = A->v_bar[id1];
                             
                             idx = index(sys.dim, sys.Nx+jx, jz, f, kz);
-                            A->v[idx] = A->v[id2];
-                            A->v_bar[idx] = A->v_bar[id2];
+                            ASSIGN2(&A->v[idx], &A->v[id2]);
+                            ASSIGN2(&A->v_bar[idx], &A->v_bar[id2]);
+                            //A->v[idx] = A->v[id2];
+                            //A->v_bar[idx] = A->v_bar[id2];
 
                         }
                     }
@@ -353,35 +361,32 @@ void Neu::Qke2::periodic_ghost_zone(field2_t *A) {
 void Neu::Qke2::compute_F(field2_t *fld, const field2_t *a) {
     switch (sys.dim){
         case 1:
-#pragma omp parallel for 
-//#pragma omp parallel for collapse(2)
+//#pragma omp parallel for
+#pragma omp parallel for
             for (int k = 0; k < sys.Nvz; ++k){
                 for (int j = 0; j < sys.Nz; ++j){
                     size_t idx = index(sys.dim, j, k);
                     double v = vz[k];
                     op2_t *a_ptr    = &a->v[idx];  
                     op2_t *a_bptr   = &a->v_bar[idx];
-                    pair2_t f_adv, f_osc;
-                    pair2_t H, H_vac, H_vv;
-                    
-                    memset(&f_adv.v, 0, sizeof(op2_t));
-                    memset(&f_adv.v_bar, 0, sizeof(op2_t));
-                    memset(&f_osc.v, 0, sizeof(op2_t));
-                    memset(&f_osc.v_bar, 0, sizeof(op2_t));
-                    memset(&H.v, 0, sizeof(op2_t));
-                    memset(&H.v_bar, 0, sizeof(op2_t));
+
+                    pair2_t f, H;
+                    zero_pair2(&f);
+                    zero_pair2(&H);
 #ifdef ADV 
-                    /*	advection	*/
+/*	Advection	*/
                     double factor = -v/(12.0*dz);
-                    ADV2(&f_adv.v, factor, a_ptr, 1);
-                    ADV2(&f_adv.v_bar, factor, a_bptr, 1);
+                    ADV2(&f.v, factor, a_ptr, 1);
+                    ADV2(&f.v_bar, factor, a_bptr, 1);
+
 #endif
 
 #ifdef KO
 /*	Kreiss-Oliger dissipation (3-rd order)	*/
                     double ko_eps = -1e-4/(dz*16);
-                    KO2(&f_adv.v, ko_eps, a_ptr, 1);
-                    KO2(&f_adv.v_bar, ko_eps, a_bptr, 1);
+                    KO2(&f.v, ko_eps, a_ptr, 1);
+                    KO2(&f.v_bar, ko_eps, a_bptr, 1);
+
 #endif
                     /*	oscillation	*/
 #ifdef VACUUM
@@ -390,43 +395,40 @@ void Neu::Qke2::compute_F(field2_t *fld, const field2_t *a) {
                     for (int kk = 0; kk < sys.Nvz; ++kk){
                         size_t idxx = index(sys.dim, j, kk);
                         double vv = vz[kk];
-                        op2_t a_conj, a_bar_conj;
-                        CONJ2(a_bar_conj, a->v_bar[idxx]);
-                        INT2(H.v, osc.mu*dvz*(1.0 - v*vv), a->v[idxx], a_bar_conj);
+                        pair2_t a_conj;
+                        CONJ2(a_conj.v_bar, a->v_bar[idxx]);
+                        INT2(&H.v, osc.mu*dvz*(1.0 - v*vv), &a->v[idxx], &a_conj.v_bar);
 
-                        CONJ2(a_conj, a->v[idxx]);
-                        INT2(H.v_bar, -osc.mu*dvz*(1.0-v*vv), a_conj, a->v_bar[idxx]);
+                        CONJ2(a_conj.v, a->v[idxx]);
+                        INT2(&H.v_bar, -osc.mu*dvz*(1.0-v*vv), &a_conj.v, &a->v_bar[idxx]);
                     } 
 
 #elif VAC_VV
-                    VAC2(H_vac, osc.theta);
-                    memset(&H_vv.v, 0, sizeof(op2_t));
-                    memset(&H_vv.v_bar, 0, sizeof(op2_t));
+                    VAC2(H, osc.theta);
                     for (int kk = 0; kk < sys.Nvz; ++kk){
                         size_t idxx = index(sys.dim, j, kk);
                         double vv = vz[kk];
-                        op2_t a_conj, a_bar_conj;
-                        CONJ2(a_bar_conj, a->v_bar[idxx]);
-                        INT2(H_vv.v, osc.mu*dvz*(1.0 - v*vv), a->v[idxx], a_bar_conj);
+                        pair2_t a_conj;
+                        CONJ2(a_conj->v_bar, a->v_bar[idxx]);
+                        INT2(&H.v, osc.mu*dvz*(1.0 - v*vv), &a->v[idxx], &a_conj->v_bar);
 
-                        CONJ2(a_conj, a->v[idxx]);
-                        INT2(H_vv.v_bar, -osc.mu*dvz*(1.0-v*vv), a_conj, a->v_bar[idxx]);
+                        CONJ2(a_conj->v, a->v[idxx]);
+                        INT2(&H.v_bar, -osc.mu*dvz*(1.0-v*vv), &a_conj->v, &a->v_bar[idxx]);
                     }
-                    MAT2_ADD(H.v, 1.0, H_vac.v, 1.0, H_vv.v);
-                    MAT2_ADD(H.v_bar, 1.0, H_vac.v_bar, 1.0, H_vv.v_bar);
 #endif                
                     
-                    COMMUTATOR2(f_osc.v, I, a->v[idx], H.v); 
-                    COMMUTATOR2(f_osc.v_bar, I, a->v_bar[idx], H.v_bar); 
-                    
-                    MAT2_ADD(fld->v[idx], 1.0, f_adv.v, 1.0, f_osc.v);
-                    MAT2_ADD(fld->v_bar[idx], 1.0, f_adv.v_bar, 1.0, f_osc.v_bar);
+                    COMMUTATOR2(f.v, I, a->v[idx], H.v); 
+                    COMMUTATOR2(f.v_bar, I, a->v_bar[idx], H.v_bar); 
 
-                    assert((fld->v[idx]._12 == conj(fld->v[idx]._21) ));
+                    ASSIGN2(&fld->v[idx], &f.v);
+                    ASSIGN2(&fld->v_bar[idx], &f.v_bar);
+                    
+                    assert((fld->v[idx].element[1] == conj(fld->v[idx].element[2]) ));
                 }
             }
             break;
         case 2:
+            
 #pragma omp parallel for
             for (int kz = 0; kz < sys.Nvz; ++kz){
                 for (int f = 0; f < sys.Nphi; ++f){
@@ -438,33 +440,27 @@ void Neu::Qke2::compute_F(field2_t *fld, const field2_t *a) {
                             size_t idx = index(sys.dim, jx, jz, f, kz);
                             op2_t *a_ptr    = &a->v[idx];  
                             op2_t *a_bptr   = &a->v_bar[idx];
-                            pair2_t f_adv, f_osc;
-                            pair2_t H, H_vac, H_vv;
-                   
+                            pair2_t _f, H;                  
+                            zero_pair2(&_f);
+                            zero_pair2(&H);
                              
-                            memset(&f_adv.v, 0, sizeof(op2_t));
-                            memset(&f_adv.v_bar, 0, sizeof(op2_t));
-                            memset(&f_osc.v, 0, sizeof(op2_t));
-                            memset(&f_osc.v_bar, 0, sizeof(op2_t));
-                            memset(&H.v, 0, sizeof(op2_t));
-                            memset(&H.v_bar, 0, sizeof(op2_t));
 #ifdef ADV 
-                            /*	advection	*/
+/*	Advection	*/
                             double factor1 = -vx[kz*sys.Nphi+f]/(12.0*dx);
                             double factor2 = -vz[kz]/(12.0*dz);
-                            ADV2(&f_adv.v, factor1, a_ptr, 1);
-                            ADV2(&f_adv.v, factor2, a_ptr, sys.Nx+2*gx );
-                            ADV2(&f_adv.v_bar, factor1, a_bptr, 1);
-                            ADV2(&f_adv.v_bar, factor2, a_bptr, sys.Nx + 2*gx);
+                            ADV2(&_f.v, factor1, a_ptr, 1);
+                            ADV2(&_f.v, factor2, a_ptr, sys.Nx + 2*gx );
+                            ADV2(&_f.v_bar, factor1, a_bptr, 1);
+                            ADV2(&_f.v_bar, factor2, a_bptr, sys.Nx + 2*gx);
 #endif
 
 #ifdef KO
 /*	Kreiss-Oliger dissipation (3-rd order)	*/
                             double ko_eps = -1e-4/(dz*16);
-                            KO2(&f_adv.v, ko_eps, a_ptr, 1);
-                            KO2(&f_adv.v, ko_eps, a_ptr, sys.Nx + 2*gx );
-                            KO2(&f_adv.v_bar, ko_eps, a_bptr, 1);
-                            KO2(&f_adv.v_bar, ko_eps, a_bptr, sys.Nx + 2*gx);
+                            KO2(&_f.v, ko_eps, a_ptr, 1);
+                            KO2(&_f.v, ko_eps, a_ptr, sys.Nx + 2*gx );
+                            KO2(&_f.v_bar, ko_eps, a_bptr, 1);
+                            KO2(&_f.v_bar, ko_eps, a_bptr, sys.Nx + 2*gx);
 #endif
 
                             /*	oscillation	*/
@@ -474,46 +470,46 @@ void Neu::Qke2::compute_F(field2_t *fld, const field2_t *a) {
                             for (int kkz = 0; kkz < sys.Nvz; ++kkz){
                                 for (int ff = 0; ff < sys.Nphi; ++ff){
                                     size_t idxx = index(sys.dim,jx,jz,ff,kkz);
-                                    op2_t a_conj, a_bar_conj;
-                                    CONJ2(a_bar_conj, a->v_bar[idxx]);
-                                    INT2(H.v, osc.mu*dvz*dphi/(2*M_PI)*(1.0 - (vz[kz]*vz[kkz] + vx[kz*sys.Nphi+f]*vx[kkz*sys.Nphi+ff] + vy[kz*sys.Nphi+f]*vy[kkz*sys.Nphi+ff])), a->v[idxx], a_bar_conj);
+                                    pair2_t a_conj;
+                                    CONJ2(a_conj.v_bar, a->v_bar[idxx]);
+                                    INT2(&H.v, osc.mu*dvz*dphi/(2*M_PI)*(1.0 - (vz[kz]*vz[kkz] + vx[kz*sys.Nphi+f]*vx[kkz*sys.Nphi+ff] + vy[kz*sys.Nphi+f]*vy[kkz*sys.Nphi+ff])),&a->v[idxx], &a_conj.v_bar);
                                     //INT2(H.v, osc.mu*dvz*dphi/(2*M_PI)*(1.0 - (vz[kz]*vz[kkz] )), a->v[idxx], a_bar_conj);
 
 
-                                    CONJ2(a_conj, a->v[idxx]);
-                                    INT2(H.v_bar, -osc.mu*dvz*dphi/(2*M_PI)*(1.0 - (vz[kz]*vz[kkz] + vx[kz*sys.Nphi+f]*vx[kkz*sys.Nphi+ff] + vy[kz*sys.Nphi+f]*vy[kkz*sys.Nphi+ff])), a_conj, a->v_bar[idxx]);
+                                    CONJ2(a_conj.v, a->v[idxx]);
+                                    INT2(&H.v_bar, -osc.mu*dvz*dphi/(2*M_PI)*(1.0 - (vz[kz]*vz[kkz] + vx[kz*sys.Nphi+f]*vx[kkz*sys.Nphi+ff] + vy[kz*sys.Nphi+f]*vy[kkz*sys.Nphi+ff])),&a_conj.v, &a->v_bar[idxx]);
                                     //INT2(H.v_bar, -osc.mu*dvz*dphi/(2*M_PI)*(1.0-(vz[kz]*vz[kkz] )), a_conj, a->v_bar[idxx]);
                                 }
                             } 
 #elif VAC_VV
-                            VAC2(H_vac, osc.theta);
-                            memset(&H_vv.v, 0, sizeof(op2_t));
-                            memset(&H_vv.v_bar, 0, sizeof(op2_t));
+                            VAC2(H, osc.theta);
+                            //memset(&H.v, 0, sizeof(op2_t));
+                            //memset(&H_vv.v_bar, 0, sizeof(op2_t));
                             for (int kkz = 0; kkz < sys.Nvz; ++kkz){
                                 for (int ff = 0; ff < sys.Nphi; ++ff){
                                     //if (pow(vz[kz],2) + pow(vx[kx],2) > 1)
                                     //    continue;
                                     size_t idxx = index(sys.dim,jx,jz,ff,kkz);
-                                    op2_t a_conj, a_bar_conj;
-                                    CONJ2(a_bar_conj, a->v_bar[idxx]);
-                                    INT2(H_vv.v, osc.mu*dvz*dphi/(2*M_PI)*(1.0 - (vz[kz]*vz[kkz] + vx[kz*sys.Nphi+f]*vx[kkz*sys.Nphi+ff] + vy[kz*sys.Nphi+f]*vy[kkz*sys.Nphi+ff])), a->v[idxx], a_bar_conj);
+                                    pair2_t a_conj;
+                                    CONJ2(a_conj.v_bar, a->v_bar[idxx]);
+                                    INT2(&H->v, osc.mu*dvz*dphi/(2*M_PI)*(1.0 - (vz[kz]*vz[kkz] + vx[kz*sys.Nphi+f]*vx[kkz*sys.Nphi+ff] + vy[kz*sys.Nphi+f]*vy[kkz*sys.Nphi+ff])), &a->v[idxx], &a_conj.v_bar);
 
-                                    CONJ2(a_conj, a->v[idxx]);
-                                    INT2(H_vv.v_bar, -osc.mu*dvz*dphi/(2*M_PI)*(1.0-(vz[kz]*vz[kkz] + vx[kz*sys.Nphi+f]*vx[kkz*sys.Nphi+ff] + vy[kz*sys.Nphi+f]*vy[kkz*sys.Nphi+ff])), a_conj, a->v_bar[idxx]);
+
+                                    CONJ2(a_conj.v, a->v[idxx]);
+                                    INT2(&H->v_bar, -osc.mu*dvz*dphi/(2*M_PI)*(1.0-(vz[kz]*vz[kkz] + vx[kz*sys.Nphi+f]*vx[kkz*sys.Nphi+ff] + vy[kz*sys.Nphi+f]*vy[kkz*sys.Nphi+ff])), &a_conj.v, &a->v_bar[idxx]);
                                 }
                             } 
 
-                            MAT2_ADD(H.v, 1.0, H_vac.v, 1.0, H_vv.v);
-                            MAT2_ADD(H.v_bar,1.0,H_vac.v_bar,1.0, H_vv.v_bar);
 #endif                
                     
-                            COMMUTATOR2(f_osc.v, I, a->v[idx], H.v); 
-                            COMMUTATOR2(f_osc.v_bar, I, a->v_bar[idx], H.v_bar); 
+                            COMMUTATOR2(_f.v, I, a->v[idx], H.v); 
+                            COMMUTATOR2(_f.v_bar, I, a->v_bar[idx], H.v_bar); 
                     
-                            MAT2_ADD(fld->v[idx], 1.0, f_adv.v, 1.0, f_osc.v);
-                            MAT2_ADD(fld->v_bar[idx], 1.0, f_adv.v_bar, 1.0, f_osc.v_bar);
+                            ASSIGN2(&fld->v[idx], &_f.v);
+                            ASSIGN2(&fld->v_bar[idx], &_f.v_bar);
 
-                            assert((fld->v[idx]._12 == conj(fld->v[idx]._21) ));
+                            assert((fld->v[idx].element[1] == conj(fld->v[idx].element[2]) ));
+                        
                         }
                     }
                 }
@@ -536,18 +532,18 @@ void Neu::Qke2::set_init(field2_t *start) {
                     double e = Gaussian(1, z[j]);
                     double g_ = g(vz[k], 0.6, 1)/2.0;
                     double g_bar = g(vz[k], 0.53, 1)/2.0;
-                    bzero(&start->v[idx], sizeof(op2_t));
-                    bzero(&start->v_bar[idx], sizeof(op2_t));
-                    start->v[idx]._11 = g_*(1 + sqrt(1-pow(osc.A*e,2)));
-                    start->v[idx]._22 = g_*(1 - sqrt(1-pow(osc.A*e,2)));
-                    start->v[idx]._12 = g_*osc.A*e;
-                    start->v[idx]._21 = g_*osc.A*e;
+                    //bzero(&start->v[idx], sizeof(op2_t));
+                    //bzero(&start->v_bar[idx], sizeof(op2_t));
+                    start->v[idx].element[0] = g_*(1 + sqrt(1-pow(osc.A*e,2)));
+                    start->v[idx].element[3] = g_*(1 - sqrt(1-pow(osc.A*e,2)));
+                    start->v[idx].element[1] = g_*osc.A*e;
+                    start->v[idx].element[2] = g_*osc.A*e;
 
-                    start->v_bar[idx]._11 = osc.alpha*g_bar*(1+sqrt(1-pow(osc.A*e,2)));
-                    start->v_bar[idx]._22 = osc.alpha*g_bar*(1-sqrt(1-pow(osc.A*e,2)));
+                    start->v_bar[idx].element[0] = osc.alpha*g_bar*(1+sqrt(1-pow(osc.A*e,2)));
+                    start->v_bar[idx].element[3] = osc.alpha*g_bar*(1-sqrt(1-pow(osc.A*e,2)));
 
-                    start->v_bar[idx]._12 = osc.alpha*g_bar*osc.A*e;
-                    start->v_bar[idx]._21 = osc.alpha*g_bar*osc.A*e;
+                    start->v_bar[idx].element[1] = osc.alpha*g_bar*osc.A*e;
+                    start->v_bar[idx].element[2] = osc.alpha*g_bar*osc.A*e;
                     //start->v[idx]._11 = e;
                     //start->v[idx]._22 = 0;
                     //start->v[idx]._12 = 0;
@@ -581,18 +577,18 @@ void Neu::Qke2::set_init(field2_t *start) {
                             double gz_bar = g(vz[kz], 0.53, 1)/2.0;
                             //double gx_bar = g(vx[kz*sys.Nphi+f], 0.53, 0.8);
                            
-                            bzero(&start->v[idx], sizeof(op2_t));  
-                            bzero(&start->v_bar[idx], sizeof(op2_t));
+                            //bzero(&start->v[idx], sizeof(op2_t));  
+                            //bzero(&start->v_bar[idx], sizeof(op2_t));
                             //
-                            start->v[idx]._11 = gz*(1+sqrt(1-pow(osc.A*e,2)));
-                            start->v[idx]._22 = gz*(1-sqrt(1-pow(osc.A*e,2)));
-                            start->v[idx]._12  = gz*osc.A*e;
-                            start->v[idx]._21 = start->v[idx]._12;
+                            start->v[idx].element[0] = gz*(1+sqrt(1-pow(osc.A*e,2)));
+                            start->v[idx].element[3] = gz*(1-sqrt(1-pow(osc.A*e,2)));
+                            start->v[idx].element[1]  = gz*osc.A*e;
+                            start->v[idx].element[2] = start->v[idx].element[1];
                             //
-                            start->v_bar[idx]._11 = osc.alpha*gz_bar*(1+sqrt(1-pow(osc.A*e,2)));
-                            start->v_bar[idx]._22 = osc.alpha*gz_bar*(1-sqrt(1-pow(osc.A*e,2)));
-                            start->v_bar[idx]._12  = osc.alpha*gz_bar*osc.A*e;
-                            start->v_bar[idx]._21 = start->v_bar[idx]._12;
+                            start->v_bar[idx].element[0] = osc.alpha*gz_bar*(1+sqrt(1-pow(osc.A*e,2)));
+                            start->v_bar[idx].element[3] = osc.alpha*gz_bar*(1-sqrt(1-pow(osc.A*e,2)));
+                            start->v_bar[idx].element[1]  = osc.alpha*gz_bar*osc.A*e;
+                            start->v_bar[idx].element[2] = start->v_bar[idx].element[1];
                             
                             //start->v[idx]._11 = e;
                             //start->v[idx]._22 = 0;
@@ -615,7 +611,7 @@ void Neu::Qke2::set_init(field2_t *start) {
 }
 
 
-void Neu::Qke2::field_to_pol(pol_t *P, const field2_t *fd) {
+void Neu::Qke2::field_to_pol(pol2_t *P, const field2_t *fd) {
     switch (sys.dim) {
         case 1:
 #pragma omp parallel for
@@ -625,12 +621,12 @@ void Neu::Qke2::field_to_pol(pol_t *P, const field2_t *fd) {
                     double g_ = g(vz[k], 0.6, 1)/2.0;
                     double g_bar = g(vz[k], 0.53, 1)/2.0;                    
                     
-                    P->v[idx]._1_ = creal(fd->v[idx]._12)/g_;
-                    P->v[idx]._2_ = cimag(fd->v[idx]._12)/g_;
-                    P->v[idx]._3_ = creal(fd->v[idx]._11 - fd->v[idx]._22)/(2*g_);
-                    P->v_bar[idx]._1_ = creal(fd->v_bar[idx]._12)/g_;
-                    P->v_bar[idx]._2_ = cimag(fd->v_bar[idx]._12)/g_;
-                    P->v_bar[idx]._3_ = creal(fd->v_bar[idx]._11 - fd->v_bar[idx]._22)/(2*g_);
+                    P->v[idx].data[0] = creal(fd->v[idx].element[1])/g_;
+                    P->v[idx].data[1] = cimag(fd->v[idx].element[1])/g_;
+                    P->v[idx].data[2] = creal(fd->v[idx].element[0] - fd->v[idx].element[3])/(2*g_);
+                    P->v_bar[idx].data[0] = creal(fd->v_bar[idx].element[1])/g_;
+                    P->v_bar[idx].data[1] = cimag(fd->v_bar[idx].element[1])/g_;
+                    P->v_bar[idx].data[2] = creal(fd->v_bar[idx].element[0] - fd->v_bar[idx].element[3])/(2*g_);
                 }
             }
             break;
@@ -649,12 +645,12 @@ void Neu::Qke2::field_to_pol(pol_t *P, const field2_t *fd) {
                             //double gx_bar = g(vx[f], 0.53, 0.8);
                            
 
-                            P->v[idx]._1_ = creal(fd->v[idx]._12)/(gz);
-                            P->v[idx]._2_ = cimag(fd->v[idx]._12)/(gz);
-                            P->v[idx]._3_ = creal(fd->v[idx]._11 - fd->v[idx]._22)/(2*gz);
-                            P->v_bar[idx]._1_ = creal(fd->v_bar[idx]._12)/(gz);
-                            P->v_bar[idx]._2_ = cimag(fd->v_bar[idx]._12)/(gz);
-                            P->v_bar[idx]._3_ = creal(fd->v_bar[idx]._11 - fd->v_bar[idx]._22)/(2*gz);
+                            P->v[idx].data[0] = creal(fd->v[idx].element[1])/(gz);
+                            P->v[idx].data[1] = cimag(fd->v[idx].element[1])/(gz);
+                            P->v[idx].data[2] = creal(fd->v[idx].element[0] - fd->v[idx].element[3])/(2*gz);
+                            P->v_bar[idx].data[0] = creal(fd->v_bar[idx].element[1])/(gz);
+                            P->v_bar[idx].data[1] = cimag(fd->v_bar[idx].element[1])/(gz);
+                            P->v_bar[idx].data[2] = creal(fd->v_bar[idx].element[0] - fd->v_bar[idx].element[3])/(2*gz);
                         }
                     }
                 }
@@ -700,17 +696,17 @@ void Neu::Qke2::vac_exact(){
                     //rho_ee = a;
                     if (fabs(z[j] - z_cent) < fabs(z[j] - z_prd)){
                         val = Gaussian(1, z[j] - z_cent);
-                        rho_exact.v[idx]._11 = a*val;
-                        rho_exact.v[idx]._12 = b*val;
-                        rho_exact.v[idx]._21 = conj(rho_exact.v[idx]._12);
-                        rho_exact.v[idx]._22 = c*val;
+                        rho_exact->v[idx].element[0] = a*val;
+                        rho_exact->v[idx].element[1] = b*val;
+                        rho_exact->v[idx].element[2] = conj(rho_exact->v[idx].element[1]);
+                        rho_exact->v[idx].element[3] = c*val;
                     }
                     else{
                         val = Gaussian(1, z[j] - z_prd);
-                        rho_exact.v[idx]._11 = a*val;
-                        rho_exact.v[idx]._12 = b*val;
-                        rho_exact.v[idx]._21 = conj(rho_exact.v[idx]._12);
-                        rho_exact.v[idx]._22 = c*val;
+                        rho_exact->v[idx].element[0] = a*val;
+                        rho_exact->v[idx].element[1] = b*val;
+                        rho_exact->v[idx].element[2] = conj(rho_exact->v[idx].element[1]);
+                        rho_exact->v[idx].element[3] = c*val;
                     }
                 }
             }
@@ -734,16 +730,16 @@ void Neu::Qke2::vac_exact(){
                             double r3 = fabs(z[jz] - z_cent);
                             double r4 = fabs(z[jz] - z_prd);
                             if (r1 < r2 && r3 < r4){
-                                rho_exact.v[idx]._11=a*Gaussian(2,x[jx]-x_cent,z[jz]-z_cent);
+                                rho_exact->v[idx].element[0]=a*Gaussian(2,x[jx]-x_cent,z[jz]-z_cent);
                             }
                             else if (r1 >= r2 && r3 < r4){
-                                rho_exact.v[idx]._11=a*Gaussian(2,x[jx]-x_prd,z[jz]-z_cent);
+                                rho_exact->v[idx].element[0]=a*Gaussian(2,x[jx]-x_prd,z[jz]-z_cent);
                             }
                             else if (r1 < r2 && r3 >= r4){
-                                rho_exact.v[idx]._11=a*Gaussian(2,x[jx]-x_cent,z[jz]-z_prd);
+                                rho_exact->v[idx].element[0]=a*Gaussian(2,x[jx]-x_cent,z[jz]-z_prd);
                             }
                             else{
-                                rho_exact.v[idx]._11=a*Gaussian(2,x[jx]-x_prd,z[jz]-z_prd);
+                                rho_exact->v[idx].element[0]=a*Gaussian(2,x[jx]-x_prd,z[jz]-z_prd);
                             } 
                         }
                     }
@@ -771,9 +767,9 @@ void Neu::Qke2::output_rho(const char *filename, field2_t *rho){
                     int idx = index(sys.dim, j, k);
                     
                     //file << vz[k] << " " << z[j] << " " << creal(rho->v[idx]._11) << " " << creal(rho->v[idx]._12) << " " << cimag(rho->v[idx]._12) << " " << creal(rho->v[idx]._22) << std::endl;
-                    error += pow(creal(rho->v[idx]._11)- creal(rho_exact.v[idx]._11), 2);
+                    error += pow(creal(rho->v[idx].element[0])- creal(rho_exact->v[idx].element[0]), 2);
                     
-                    file << vz[k] << " " << z[j] << " " << creal(rho->v[idx]._11) << " " << creal(rho_exact.v[idx]._11) << std::endl;
+                    file << vz[k] << " " << z[j] << " " << creal(rho->v[idx].element[0]) << " " << creal(rho_exact->v[idx].element[0]) << std::endl;
                 }
                 error = sqrt(error);
                 file << error << std::endl;
@@ -789,9 +785,10 @@ void Neu::Qke2::output_rho(const char *filename, field2_t *rho){
                         for (int jx = 0; jx < sys.Nx; jx+=1){
                             int idx = index(sys.dim, jx, jz, f, kz);
                             
-                            error += dz*dx*pow(creal(rho->v[idx]._11-rho_exact.v[idx]._11),2);
+                            error += dz*dx*pow(creal(rho->v[idx].element[0]-rho_exact->v[idx].element[0]),2);
                             //file << vz[kz] << " " << vx[kx] << dt*" " << z[jz] << " " << x[jx] << " " <<  creal(rho->v[idx]._11) << " " << creal(rho->v[idx]._12) << " " << cimag(rho->v[idx]._12) << " " << creal(rho->v[idx]._22) << " " << rho_ee << std::endl;
-                            file << vz[kz] << " " << vx[kz*sys.Nphi+f] << " " << z[jz] << " " << x[jx] << " " <<  creal(rho->v[idx]._11) << " " << creal(rho_exact.v[idx]._11) << " " << std::endl;
+                            file << vz[kz] << " " << vx[kz*sys.Nphi+f] << " " << z[jz] << " " << x[jx] << " " <<  creal(rho->v[idx].element[0]) << " " << creal(rho_exact->v[idx].element[0]) << " " << std::endl;
+                 
                         }
                     }
                     error = sqrt(error);
@@ -805,7 +802,7 @@ void Neu::Qke2::output_rho(const char *filename, field2_t *rho){
     file.close();
 }
 
-void Neu::Qke2::output_P(const char *filename, pol_t *P){
+void Neu::Qke2::output_P(const char *filename, const pol2_t *P){
     std::ofstream file;
     file.open(filename, std::ofstream::out | std::ofstream::trunc);
     if (!file){
@@ -817,7 +814,7 @@ void Neu::Qke2::output_P(const char *filename, pol_t *P){
             for (int k = 0; k < sys.Nvz; ++k){
                 for (int j = 0; j < sys.Nz; j+=1){
                     int idx = index(sys.dim, j, k);
-                    file << vz[k] << " " << z[j] << " " << P->v[idx]._1_ << " " << P->v[idx]._2_ << " " << P->v[idx]._3_ << std::endl;
+                    file << vz[k] << " " << z[j] << " " << P->v[idx].data[0] << " " << P->v[idx].data[1] << " " << P->v[idx].data[2] << std::endl;
                 }
             } 
             break;
@@ -829,7 +826,7 @@ void Neu::Qke2::output_P(const char *filename, pol_t *P){
                     for (int jz = 0; jz < sys.Nz; jz+=1){
                         for (int jx = 0; jx < sys.Nx; jx+=5){
                             int idx = index(sys.dim, jx, jz, f, kz);
-                            file << vz[kz] << " " << vx[kz*sys.Nphi+f] << " " << z[jz] << " " << x[jx] << " " << P->v[idx]._1_ << " " << P->v[idx]._2_ << " " << P->v[idx]._3_ << std::endl;
+                            file << vz[kz] << " " << vx[kz*sys.Nphi+f] << " " << z[jz] << " " << x[jx] << " " << P->v[idx].data[0] << " " << P->v[idx].data[1] << " " << P->v[idx].data[2] << std::endl;
                         }
                     }
                 }
@@ -854,34 +851,34 @@ void Neu::Qke2::run(){
             break;
     }   
 
-    set_init(&rho);
+    set_init(rho);
     for (int i = 0; i <= sys.Nt; ++i){
         printf("%d\n", i);
         osc.n = i;
         if (!(i & 1)) {
-            if (i%200 == 0){
+            if (i%10 == 0){
 #ifdef VACUUM
                 //vac_exact();
                 //sprintf(file, "rho_%05d.txt", i);
                 //output_rho(file, &rho);
-                field_to_pol(&P, &rho);
+                field_to_pol(P, rho);
                 sprintf(file, "P_%05d_1dim.txt", i);
-                output_P(file, &P);
+                output_P(file, P);
 #elif INT_VV
-                field_to_pol(&P, &rho);
+                field_to_pol(P, rho);
                 sprintf(file, "P_%05d_%ddim.txt", i, sys.dim);
-                output_P(file, &P);
+                output_P(file, P);
 #elif ADV
-                field_to_pol(&P, &rho);
+                field_to_pol(P, rho);
                 sprintf(file, "P_%05d_%ddim.txt", i, sys.dim);
-                output_P(file, &P);
+                output_P(file, P);
 #endif 
             }  
-            rk4(&rho, &rho_next);
+            rk4(rho, rho_next);
             
         }
         else {
-            rk4(&rho_next, &rho);
+            rk4(rho_next, rho);
         }
     } 
 }

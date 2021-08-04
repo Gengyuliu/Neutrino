@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <complex.h>
-#define cnum _Complex double
+#include "objects.hpp"
 
 typedef struct phys_sys_t {
     int     flavor;
@@ -31,62 +31,62 @@ typedef struct num_sys_t {
     int     Nphi,  Nvz;
 } num_sys_t;
 
-/*	2-flavor
- *	SU(2)	*/
-typedef struct operator2_t {
-    cnum _11; cnum _12;
-    cnum _21; cnum _22;
-} op2_t;
-typedef struct vector2_t {
-    double _1_;
-    double _2_;
-    double _3_;
-} vec2_t;
-
-typedef struct field2_t {
-    op2_t *v;
-    op2_t *v_bar;
-} field2_t;
-
-typedef struct pair2_t{
-    op2_t v;
-    op2_t v_bar;
-} pair2_t;
-
-typedef struct polarization_t {
-    vec2_t *v;
-    vec2_t *v_bar;
-} pol_t;
-
-/*	3-flavor
- *	SU(3)	*/
-typedef struct operator3_t {
-    cnum _11; cnum _12; cnum _13;
-    cnum _21; cnum _22; cnum _23;
-    cnum _31; cnum _32; cnum _33;
-} op3_t;
-typedef struct vector3_t {
-    double _1_;
-    double _2_; 
-    double _3_; 
-    double _4_; 
-    double _5_; 
-    double _6_; 
-    double _7_; 
-    double _8_; 
-} vec3_t;
-
-typedef struct field3_t {
-    op3_t *v;
-    op3_t *v_bar;
-} field3_t;
-
-typedef struct pair3_t {
-    op3_t v;
-    op3_t v_bar;
-} pair3_t;
-
-
+///*	2-flavor
+// *	SU(2)	*/
+//typedef struct operator2_t {
+//    cnum _11; cnum _12;
+//    cnum _21; cnum _22;
+//} op2_t;
+//typedef struct vector2_t {
+//    double _1_;
+//    double _2_;
+//    double _3_;
+//} vec2_t;
+//
+//typedef struct field2_t {
+//    op2_t *v;
+//    op2_t *v_bar;
+//} field2_t;
+//
+//typedef struct pair2_t{
+//    op2_t v;
+//    op2_t v_bar;
+//} pair2_t;
+//
+//typedef struct polarization_t {
+//    vec2_t *v;
+//    vec2_t *v_bar;
+//} pol_t;
+//
+///*	3-flavor
+// *	SU(3)	*/
+//typedef struct operator3_t {
+//    cnum _11; cnum _12; cnum _13;
+//    cnum _21; cnum _22; cnum _23;
+//    cnum _31; cnum _32; cnum _33;
+//} op3_t;
+//typedef struct vector3_t {
+//    double _1_;
+//    double _2_; 
+//    double _3_; 
+//    double _4_; 
+//    double _5_; 
+//    double _6_; 
+//    double _7_; 
+//    double _8_; 
+//} vec3_t;
+//
+//typedef struct field3_t {
+//    op3_t *v;
+//    op3_t *v_bar;
+//} field3_t;
+//
+//typedef struct pair3_t {
+//    op3_t v;
+//    op3_t v_bar;
+//} pair3_t;
+//
+//
 namespace Neu {
     void parsing(int argc, char *const *argv, phys_sys_t *a, num_sys_t *b);
     class Qke2 {
@@ -97,10 +97,10 @@ namespace Neu {
             double      dt;
             double      v1, v2;
             size_t      SIZE;
-            field2_t    rho_exact; 
-            field2_t    rho;      
-            field2_t    rho_next;
-            pol_t       P; 
+            field2_t    *rho_exact; 
+            field2_t    *rho;      
+            field2_t    *rho_next;
+            pol2_t      *P; 
             double  dx, dy, dz;
             double  dvz, dphi;
             double  *x, *z;
@@ -149,7 +149,7 @@ namespace Neu {
                         vx  = new double[sys.Nvz*sys.Nphi];
                         vy  = new double[sys.Nvz*sys.Nphi];
                         NTx  = new int[sys.Nvz*sys.Nphi];
-                        NTz  = new int[sys.Nvz];
+                        //NTz  = new int[sys.Nvz];
 
                         dt = _num_sys.CFL*dz/v2;
                         for (int j = 0; j < sys.Nx; ++j)
@@ -177,35 +177,43 @@ namespace Neu {
                         //SIZE = (size_t) (sys.Nx+2*gx)*(sys.Ny+2*gy)*(sys.Nz+2*gz)*sys.Nphi*sys.Nvy*sys.Nvz;
                         break;
                 }
-                rho_exact.v     = new op2_t[SIZE];
-                rho_exact.v_bar = new op2_t[SIZE];
-                rho.v           = new op2_t[SIZE];
-                rho.v_bar       = new op2_t[SIZE];
-                rho_next.v      = new op2_t[SIZE];
-                rho_next.v_bar  = new op2_t[SIZE];
-                P.v             = new vec2_t[SIZE];
-                P.v_bar         = new vec2_t[SIZE];
+                rho_exact   = make_field2(SIZE);
+                rho         = make_field2(SIZE);
+                rho_next    = make_field2(SIZE);
+                P           = make_pol2(SIZE);
+                //rho_exact.v     = new op2_t[SIZE];
+                //rho_exact.v_bar = new op2_t[SIZE];
+                //rho.v           = new op2_t[SIZE];
+                //rho.v_bar       = new op2_t[SIZE];
+                //rho_next.v      = new op2_t[SIZE];
+                //rho_next.v_bar  = new op2_t[SIZE];
+                //P.v             = new vec2_t[SIZE];
+                //P.v_bar         = new vec2_t[SIZE];
             }            
             ~Qke2() {
                 switch (sys.dim) {
                     case 1:
                         delete[] z; delete[] vz;
-                        //delete[] NTz;
+                        delete[] NTz;
                         break;
                     case 2:
                         delete[] x; delete[] z;
                         delete[] vz; delete[] phi; 
                         delete[] vx; delete[] vy;
-                        //delete[] NTx; delete[] NTz;
+                        delete[] NTx; //delete[] NTz;
                         break;
                     case 3:
                         break;
                 
                 } 
-                delete[] rho_exact.v; delete [] rho_exact.v_bar;
-                delete[] rho.v; delete [] rho.v_bar;
-                delete[] rho_next.v; delete[] rho_next.v_bar;
-                delete[] P.v;   delete[] P.v_bar;
+                free_field2(rho_exact);
+                free_field2(rho);
+                free_field2(rho_next);
+                free_pol2(P);
+                //delete[] rho_exact.v; delete [] rho_exact.v_bar;
+                //delete[] rho.v; delete [] rho.v_bar;
+                //delete[] rho_next.v; delete[] rho_next.v_bar;
+                //delete[] P.v;   delete[] P.v_bar;
             }
             size_t index(int dim, ...) {
                 //dim = sys.dim;
@@ -239,11 +247,11 @@ namespace Neu {
                 else 
                    return 0;
             } 
-            void ccommutator(const cnum a, const op2_t *A, const op2_t *B, op2_t *C);
+            //void ccommutator(const cnum a, const op2_t *A, const op2_t *B, op2_t *C);
 
             void rk4(field2_t *curr, field2_t *next);
             
-            void fieldadd(field2_t *C, const cnum a, const field2_t *A, const cnum b, const field2_t *B);
+            void fieldadd(field2_t *C, const cnum a, field2_t *A, const cnum b, field2_t *B);
             void periodic_ghost_zone(field2_t *A);
             
             void injetopen_ghost_zone(field2_t *A);
@@ -252,7 +260,7 @@ namespace Neu {
             
             void set_init(field2_t *start);
 
-            void field_to_pol(pol_t *P, const field2_t *fd);
+            void field_to_pol(pol2_t *P, const field2_t *fd);
             
             double Gaussian(int dim, ...);
 
@@ -260,7 +268,7 @@ namespace Neu {
 
             void output_rho(const char *filename, field2_t *rho);
 
-            void output_P(const char *filename, pol_t *P);
+            void output_P(const char *filename, const pol2_t *P);
             void run();
     };
     double g(double u, double xi, double v);
@@ -269,5 +277,16 @@ namespace Neu {
 
 }
 
-static inline void ADV2(op2_t *y, double a, op2_t *x, size_t N);
+#define DECLARE_FUNC(flavor)    \
+    static inline void ADV##flavor(op##flavor##_t *y, cnum a, const op##flavor##_t *x, size_t N);                   \
+    static inline void KO##flavor(op##flavor##_t *y, cnum a, const op##flavor##_t *x, size_t N);                    \
+    static inline void MAT##flavor##_ADD(op##flavor##_t *C, cnum a, op##flavor##_t *A, cnum b, op##flavor##_t *B);  \
+   static inline void INT##flavor(op##flavor##_t *A, cnum a, const op##flavor##_t *B, const op##flavor##_t *C);     \
+   static inline void ASSIGN##flavor(op##flavor##_t *y, op##flavor##_t *x);
+
+
+DECLARE_FUNC(2)
+DECLARE_FUNC(3)
+#undef DECLARE_FUNC
+
 #endif

@@ -3,6 +3,7 @@
 #include <strings.h>
 #include "neu.hpp"
 
+/*	driver program	*/
 int main(int argc, char *argv[])
 {
     phys_sys_t osc;
@@ -11,7 +12,6 @@ int main(int argc, char *argv[])
     bzero(&sys, sizeof(num_sys_t));
     Neu::parsing(argc, argv, &osc, &sys); 
     Neu::Qke2 state(osc, sys);
-
     state.run(); 
     return 0;
 }
