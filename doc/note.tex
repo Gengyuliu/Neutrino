@@ -168,6 +168,9 @@ Given the explicit form of initial condition, the solution is
    \item $\partial _{t} \varrho = - \vb{v}\cdot \nabla \varrho + i \comm{\varrho}{\matcal{H}} \equiv g(t,  \varrho)$
    \item $\vb{v} \cdot \nabla \varrho \rightarrow \frac{v_{x}}{12 dx}\left(\varrho_{i-2,j} - 8\varrho_{i-1, j} + 8\varrho_{i+1, j} - \varrho_{i+2,j }\right) + \frac{v_{z}}{12dz} \left(  \varrho_{i,j-2} -8\varrho_{i,j-1} + 8\varrho_{i,j+1} -\varrho_{i,j+2} \right)$
    \item index : $(j+g_{z})*(N_{x} + 2*g_{x}) + (i+g_{x})$
+   \begin{itemize}
+      \item $i = 0 \sim  N_{x}-1, \hspace{0.1cm} j = 0 \sim N_{y}-1$
+   \end{itemize}
    \item $g_{x}, g_{z}$ are number of grids in ghost zones
    \item RK4 -- $\varrho ^{n+1} = \varrho^{n} + \frac{dt}{6}\left( g_{0} + 2 g_{1} + 2g_{2} + g_{3}\right) + O(dt ^{5})$
         \begin{itemize}
